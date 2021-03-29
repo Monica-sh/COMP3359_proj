@@ -7,11 +7,13 @@ import torch.nn.functional as F
 
 from network import MLPPolicy
 from memory import Transition, ReplayMemory
+from utils import AverageMeter
 
 
 class Agent:
     def __init__(self,
                  env,
+                 logger,
                  gamma,
                  start_learning,
                  memory_size,
@@ -41,6 +43,7 @@ class Agent:
         self.target_net = MLPPolicy(n_actions, env.state_shape).to(self.device)
         self.optimizer = torch.optim.Adam(lr=learning_rate)
         self.memory = ReplayMemory(memory_size)
+        self.logger = logger
         self.epsilon = init_epsilon
 
     def experience_replay(self, DEBUG=False):
@@ -219,9 +222,8 @@ class Agent:
             ##### 2.2. Loop for Steps #####
             # Logging for current episode
             done = None  # To mark if current episode is done
-            episode_steps = 0  # Counter of steps taken in current episode
             episode_reward = 0  # Sum of rewards received in current episode
-            episode_max_x = -100  # Record the max x car position achieved in current episode
+            loss_meter = AverageMeter()
 
             # Loop till end of episode (done = True)
             while not done:
@@ -239,7 +241,8 @@ class Agent:
 
                 self.memory.push(state, action, reward, next_state)
 
-                self.experience_replay(DEBUG=False)
+                loss = self.experience_replay(DEBUG=False)
+                loss_meter.update(loss)
 
                 if global_steps % self.target_update_step == 0:
                     self.target_net.load_state_dict(self.policy_net.state_dict())
@@ -248,22 +251,17 @@ class Agent:
                 state = next_state
                 global_steps += 1
                 episode_reward += reward.item()
-                episode_steps += 1
-                if next_state is not None and next_state[0, 0] > episode_max_x:
-                    episode_max_x = next_state[0, 0].item()
 
             # Logging after an episode
             end_time = time()
-            all_rewards.append(episode_reward)
-            all_steps.append(episode_steps)
-            all_max_xs.append(episode_max_x)
+
+            self.logger.record({'reward': episode_reward,
+                                'loss': loss_meter.avg})
 
             # Print out logging messages
             if episode % 100 == 0:
                 print("Time: ", end_time - start_time)
-                print("Steps: ", episode_steps)
                 print("Global Steps: ", global_steps)
                 print("Epsilon: ", self.epsilon)
                 print("Reward: ", episode_reward)
-                print("Max x Pos:", episode_max_x)
                 print("====================")

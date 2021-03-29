@@ -6,8 +6,9 @@ from sacred.observers import FileStorageObserver
 
 from data import load_env
 from agent import Agent
+from utils import Logger
 
-invest_ex = Experiment('interp')
+invest_ex = Experiment('invest')
 
 
 @invest_ex.config
@@ -35,7 +36,8 @@ def base_config():
 def run(gamma, start_learning, memory_size, batch_size, target_update_step, test_interval,
         init_epsilon, epsilon_decay_rate, epsilon_decay_step, learning_rate, n_episodes, n_actions):
     env = load_env()
-    agent = Agent(env, gamma, start_learning, memory_size, batch_size, target_update_step, test_interval,
+    logger = Logger(invest_ex.observers[0].dir)
+    agent = Agent(env, logger, gamma, start_learning, memory_size, batch_size, target_update_step, test_interval,
                   init_epsilon, epsilon_decay_rate, epsilon_decay_step, learning_rate, n_episodes, n_actions)
     agent.learn()
 
