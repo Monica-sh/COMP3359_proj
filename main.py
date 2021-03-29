@@ -31,7 +31,6 @@ def base_config():
     n_actions = 2
 
 
-
 @invest_ex.main
 def run(gamma, start_learning, memory_size, batch_size, target_update_step, test_interval,
         init_epsilon, epsilon_decay_rate, epsilon_decay_step, learning_rate, n_episodes, n_actions):
@@ -39,7 +38,7 @@ def run(gamma, start_learning, memory_size, batch_size, target_update_step, test
     logger = Logger(invest_ex.observers[0].dir)
     agent = Agent(env, logger, gamma, start_learning, memory_size, batch_size, target_update_step, test_interval,
                   init_epsilon, epsilon_decay_rate, epsilon_decay_step, learning_rate, n_episodes, n_actions)
-    agent.learn()
+    agent.train()
 
 
 if __name__ == '__main__':
