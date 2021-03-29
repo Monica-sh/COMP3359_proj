@@ -19,13 +19,13 @@ def base_config():
     target_update_step = 10
     test_interval = 100
 
-    epsilon = 1
+    init_epsilon = 1
     epsilon_minimum = 0.05
     epsilon_decay_rate = 0.9999
+    epsilon_decay_step = 10
     learning_rate = 0.001
 
-    # Maximum update steps
-    max_step = 40000000
+    n_episodes = 40000000
 
     n_actions = 2
 
@@ -33,10 +33,10 @@ def base_config():
 
 @invest_ex.main
 def run(gamma, start_learning, memory_size, batch_size, target_update_step, test_interval,
-        epsilon, epsilon_decay_rate, learning_rate, max_step, n_actions):
+        init_epsilon, epsilon_decay_rate, epsilon_decay_step, learning_rate, n_episodes, n_actions):
     env = load_env()
     agent = Agent(env, gamma, start_learning, memory_size, batch_size, target_update_step, test_interval,
-                  epsilon, epsilon_decay_rate, learning_rate, max_step, n_actions)
+                  init_epsilon, epsilon_decay_rate, epsilon_decay_step, learning_rate, n_episodes, n_actions)
     agent.learn()
 
 
