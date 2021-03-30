@@ -41,7 +41,7 @@ class Agent:
 
         self.policy_net = MLPPolicy(n_actions, env.state_shape).to(self.device)
         self.target_net = MLPPolicy(n_actions, env.state_shape).to(self.device)
-        self.optimizer = torch.optim.Adam(lr=learning_rate)
+        self.optimizer = torch.optim.Adam(self.policy_net.parameters(), lr=learning_rate)
         self.memory = ReplayMemory(memory_size)
         self.logger = logger
         self.epsilon = init_epsilon
@@ -150,7 +150,7 @@ class Agent:
         # Compute the loss between predicted Q values (LHS) and target Q values (RHS).
         # Mean Squared Error (MSE) is used as the loss function:
         #     loss = (LHS - RHS)^2
-        loss = F.mse_loss(state_action_values, expected_state_action_values.unsqueeze(1))
+        loss = F.mse_loss(state_action_values.to(torch.float64), expected_state_action_values.unsqueeze(1))
 
         # Update of DQN network weights
         self.optimizer.zero_grad()
@@ -218,6 +218,8 @@ class Agent:
             ##### 2.1. (Game Starts) Initialization of Mountain Car Environment #####
             # Initialize the environment, get initial state
             state = self.env.reset()
+            #preprocess state
+            state = preprocess_state(state, self.device)
 
             ##### 2.2. Loop for Steps #####
             # Logging for current episode
@@ -231,9 +233,12 @@ class Agent:
 
                 action = self.select_action(state)
 
-                next_state, reward, done, info = self.env.step(action[0][0].item())
+                next_state, reward, done = self.env.step(action[0][0].item())
 
-                if done:
+                if not done:
+                    #preprocess next_state
+                    next_state = preprocess_state(next_state, self.device)
+                else:
                     next_state = None
 
                 # reward: convert to tensor with shape (1)
@@ -265,3 +270,32 @@ class Agent:
                 print("Epsilon: ", self.epsilon)
                 print("Reward: ", episode_reward)
                 print("====================")
+    
+
+def preprocess_state(state, device=None) :
+    """
+    To convert the state prepared by Gym and to a format
+    that is convenient for later processing 
+    (see comments in function Experience replay)
+
+    Input(s) :
+    - state: state numpy array prepared by Gym envrionment
+    - device: computation device used for PyTorch tensors
+    
+    Output(s) :
+    - state: state as a PyTorch tensor with type float and
+             shape (1,2)
+    """
+    #                                # The following values are default values.
+    #                                # variable type | value type | data shape
+    # input state                    # numpy.ndarray |   float64  | (2,)  
+    state = torch.from_numpy(state)  # torch.Tensor  |   double   | (2)  
+    state = state.float()            # torch.Tensor  |   float    | (2)  
+    state = state.unsqueeze(0)       # torch.Tensor  |   float    | (1,2)  
+
+    # Pass state tensor to the specified computation device 
+    # (if None, the default device is used)
+    state = state.to(device)
+
+    return state
+

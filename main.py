@@ -28,7 +28,7 @@ def base_config():
 
     n_episodes = 40000000
 
-    n_actions = 2
+    n_actions = 3
 
 
 @invest_ex.main
