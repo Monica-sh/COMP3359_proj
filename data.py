@@ -56,11 +56,11 @@ class Environment:
         
         # take the but/sell action
         # action = 2 >> buy, action = 1 >> no sell no buy, action = 0 >> sell
-        if self.state[0] == 0 and action == -1:
+        if self.state[0] == 0 and action == 0:
             # cannot short sell
             return 0
         
-        self.state += action
+        self.state += action - 1
         return - (action - 1) * close
 
 
