@@ -40,7 +40,9 @@ class ReplayMemory(object):
         """
 
         r_list = [trans.reward for trans in self.memory]
-        first_none_idx = r_list.index(None)
+        first_none_idx = 0
+        if None in r_list:
+            first_none_idx = r_list.index(None)
         while True:
             if None in r_list:
                 print(r_list)

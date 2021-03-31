@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 import pandas as pd
 from datetime import datetime, timedelta
 
@@ -21,7 +22,8 @@ class Environment:
         self.start = data_df.index[0]
         self.end = data_df.index[-1]
         self.state_shape = 1
-        self.state = np.zeros(self.state_shape)
+        # self.state = np.zeros(self.state_shape)
+        self.state = np.random.rand(self.state_shape)
         self.date = self.start
         self.holding_stocks = False
     
@@ -32,7 +34,7 @@ class Environment:
             while not self.data_df.loc[date]:
                 date = (datetime.strptime(date, '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d')
             self.date = date
-        self.state = np.zeros(self.state_shape)
+        self.state = np.random.rand(self.state_shape)
 
         return self.state
 

@@ -93,6 +93,10 @@ class Agent:
         state_batch = torch.cat(batch.state)  # shape: (B, N_STATES)
         action_batch = torch.cat(batch.action)  # shape: (B, 1)
         reward_batch = torch.cat(batch.reward)  # shape: (B)
+
+        # reward_batch = torch.rand(self.batch_size)
+        # state_batch = torch.rand((self.batch_size, self.env.state_shape))  # shape: (B, N_STATES)
+
         # Now, state_batch has the shape of input data to the DQN model.
 
         # However, it is not enough to simply concatenate batch.next_state (list of smaller tensors)
@@ -104,7 +108,7 @@ class Agent:
         # Thus, we extract the non-final next state first, which will be used to predict Q(s',a') of
         # non-final next states later.
         non_final_next_states = torch.cat([s for s in batch.next_state
-                                           if s is not None])  # shape: (B_non_final)
+                                           if s is not None]).float()  # shape: (B_non_final)
         # To keep track of the non-final next states, we use a mask to mark down locations of values
         # of non-final next states.
         non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
@@ -127,6 +131,7 @@ class Agent:
         # policy_net(state_batch).gather(1, action_batch):
         #     As we are only interested in updating the Q value Q(s,a) of the taken action a,
         #     we gather the corresponding the concerned Q value according to index of action in action_batch.
+        # state_action_values = self.policy_net(state_batch.float()).gather(1, action_batch).float()  # shape: (B,1)
         state_action_values = self.policy_net(state_batch).gather(1, action_batch)  # shape: (B,1)
         if DEBUG:
             print("Predicted Q values (LHS) = Q(s,a)")
@@ -136,17 +141,18 @@ class Agent:
         ### RHS: r + gamma * max_a'( Q(s',a') ) ###
         # next_state_values :
         #     prepare a 0-value tensor for later to store the max predicted Q values max_a'(Q(s',a')).
-        next_state_values = torch.zeros(self.batch_size, device=self.device)  # shape: (B)
+        next_state_values = torch.zeros(self.batch_size, device=self.device).float()  # shape: (B)
         # target_net(non_final_next_states), shape (B_non_final) :
         #     Target DQN predicts Q values Q(s',a') for all possible actions a' (for non-final next state only)
         # target_net(non_final_next_states).max(1)[0].detach(), shape (B_non_final)
         #     max value of predicted Q values max_a'(Q(s',a'))
         # next_state_values[non_final_mask] = target_net(non_final_next_states).max(1)[0].detach() :
         #     update only values in next_state_values that correspond to non-final next states
-        next_state_values[non_final_mask] = self.target_net(non_final_next_states).max(1)[0].detach()  # shape: (B)
+        next_state_values[non_final_mask] = self.target_net(
+            non_final_next_states.float()).max(1)[0].detach().float()  # shape: (B)
         # expected_state_action_values :
         #     target Q values = r + gamma * max_a'( Q(s',a') )
-        expected_state_action_values = reward_batch + (self.gamma * next_state_values)  # shape: (B)
+        expected_state_action_values = (reward_batch + (self.gamma * next_state_values)).float()  # shape: (B)
         if DEBUG:
             print("Target Q values (RHS) = r + gamma * max_a'( Q(s',a') )")
             print("= ", expected_state_action_values)
@@ -156,7 +162,8 @@ class Agent:
         # Compute the loss between predicted Q values (LHS) and target Q values (RHS).
         # Mean Squared Error (MSE) is used as the loss function:
         #     loss = (LHS - RHS)^2
-        loss = F.mse_loss(state_action_values.to(torch.float64), expected_state_action_values.unsqueeze(1))
+        loss = F.mse_loss(state_action_values,
+                          expected_state_action_values.unsqueeze(1).float())
 
         # Update of DQN network weights
         self.optimizer.zero_grad()
