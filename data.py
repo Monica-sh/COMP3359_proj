@@ -56,13 +56,16 @@ class Environment:
         
         # take the but/sell action
         # action = 2 >> buy, action = 1 >> no sell no buy, action = 0 >> sell
-        if self.state[0] == 0 and action == 0:
-            # cannot short sell
-            return 0
+        profit = None
+
+        if action == 0:  # The agent has sold the stocks
+            # TODO: Calculate profit here
+            profit = 0
+
         
         self.state += action - 1
-        return - (action - 1) * close
-
+        # return - (action - 1) * close
+        return profit
 
 # def load_env(tickers=['aapl']):
 #     data_df = None
