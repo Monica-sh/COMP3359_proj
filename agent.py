@@ -38,6 +38,7 @@ class Agent:
         self.n_episodes = n_episodes
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.n_actions = n_actions
+        self.holding_stock = False
 
         self.policy_net = MLPPolicy(n_actions, env.state_shape).to(self.device)
         self.target_net = MLPPolicy(n_actions, env.state_shape).to(self.device)
@@ -182,30 +183,33 @@ class Agent:
         Output(s) :
         - action: action to be taken, a tensor with type long and shape (1,1)
         """
-        if random.random() <= self.epsilon:
-            # With prob. epsilon,
-            # (Exploration) select random action.
+        while True:
+            if random.random() <= self.epsilon:
+                # With prob. epsilon
+                action = random.randrange(0, self.n_actions, 1)
+                action = torch.LongTensor([[action]]).to(self.device)
 
-            # Your task:
-            # 1. Pick a random action
-            # 2. Prepare the action as a tensor with type long and shape (1,1)
-            # (Hint: you may consider random.randrange(...))
+            else:
+                # With prob. 1 - epsilon,
+                # (Exploitation) select action with max predicted Q-Values of current state.
 
-            action = random.randrange(0, self.n_actions, 1)
-            action = torch.LongTensor([[action]]).to(self.device)
+                with torch.no_grad():
+                    action = torch.argmax(self.policy_net(state)).unsqueeze(0).unsqueeze(0).to(self.device)
 
-        else:
-            # With prob. 1 - epsilon,
-            # (Exploitation) select action with max predicted Q-Values of current state.
+            # The agent can only sell stocks when it is holding some;
+            # Similarly, it can only buy stocks when it's holding nothing
+            # action = 2 >> buy, action = 1 >> no sell no buy, action = 0 >> sell
+            # Only valid actions can be returned.
+            if self.holding_stock and action in [0, 1]:
+                break
+            elif not self.holding_stock and action in [1, 2]:
+                break
 
-            # Your task:
-            # 1. Predict Q values of current state
-            # 2. Select action with greatest Q value
-            # 3. Prepare the action as a tensor with type long and shape (1,1)
-            # (Hint: policy_net(state) outputs the Q values for all actions)
-            with torch.no_grad():
-                action = torch.argmax(self.policy_net(state)).unsqueeze(0).unsqueeze(0).to(self.device)
-
+        # Change the state of self.holding_stock
+        if action == 0:  # Sell the stocks
+            self.holding_stock = False
+        if action == 2:  # Buy some stocks
+            self.holding_stock = True
         return action
 
     def train(self):
@@ -224,6 +228,7 @@ class Agent:
             done = None  # To mark if current episode is done
             episode_reward = 0  # Sum of rewards received in current episode
             loss_meter = AverageMeter()
+            self.holding_stock = False
 
             # Loop till end of episode (done = True)
             while not done:
