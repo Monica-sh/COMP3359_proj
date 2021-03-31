@@ -1,11 +1,12 @@
 import numpy as np
+import os
 import torch
 import pandas as pd
 from datetime import datetime, timedelta
 
 
-def load_env(ticker='aapl'):
-    data_path = "Dataset/Stocks/{}.us.txt".format(ticker) 
+def load_env(root_dir, ticker='aapl'):
+    data_path = os.path.join(root_dir, "Dataset/Stocks/{}.us.txt".format(ticker))
     df = pd.read_csv(data_path)
     df.index = df["Date"]
     df = df[["Open", "Close"]]

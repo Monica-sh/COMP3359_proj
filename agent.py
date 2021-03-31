@@ -284,6 +284,9 @@ class Agent:
                 print("Epsilon: ", self.epsilon)
                 print("Reward: ", episode_reward)
                 print("====================")
+
+        avg_reward = self.logger.get_avg_reward()
+        return avg_reward
     
 
 def preprocess_state(state, device=None):

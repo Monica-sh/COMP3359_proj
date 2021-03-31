@@ -1,3 +1,4 @@
+import os
 import torch
 import sacred
 
@@ -31,12 +32,14 @@ def base_config():
 
     n_actions = 3
 
+    root_dir = os.getcwd()
+
 
 @invest_ex.main
 def run(gamma, start_learning, memory_size, batch_size, target_update_step, policy_update_step,
         test_interval, init_epsilon, epsilon_decay_rate, epsilon_decay_step, learning_rate,
-        n_episodes, n_actions):
-    env = load_env()
+        n_episodes, n_actions, root_dir):
+    env = load_env(root_dir)
     logger = Logger(invest_ex.observers[0].dir)
     agent = Agent(env, logger, gamma, start_learning, memory_size, batch_size, target_update_step,
                   policy_update_step, test_interval, init_epsilon, epsilon_decay_rate,
