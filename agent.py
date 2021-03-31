@@ -1,7 +1,9 @@
 import math
+import pdb
 import random
 from time import time
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 
@@ -19,6 +21,7 @@ class Agent:
                  memory_size,
                  batch_size,
                  target_update_step,
+                 policy_update_step,
                  test_interval,
                  init_epsilon,
                  epsilon_decay_rate,
@@ -32,16 +35,16 @@ class Agent:
         self.start_learning = start_learning
         self.batch_size = batch_size
         self.target_update_step = target_update_step
+        self.policy_update_step = policy_update_step
         self.test_interval = test_interval
         self.epsilon_decay_rate = epsilon_decay_rate
         self.epsilon_decay_step = epsilon_decay_step
         self.n_episodes = n_episodes
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.n_actions = n_actions
-        self.holding_stock = False
 
-        self.policy_net = MLPPolicy(n_actions, env.state_shape).to(self.device)
-        self.target_net = MLPPolicy(n_actions, env.state_shape).to(self.device)
+        self.policy_net = MLPPolicy(n_actions, env.state_shape).to(self.device).float()
+        self.target_net = MLPPolicy(n_actions, env.state_shape).to(self.device).float()
         self.optimizer = torch.optim.Adam(self.policy_net.parameters(), lr=learning_rate)
         self.memory = ReplayMemory(memory_size)
         self.logger = logger
@@ -67,7 +70,7 @@ class Agent:
         # to give a input batch.
         if len(self.memory) < self.batch_size:
             # Return a loss value = 0 to notice that training is not yet started (only for logging)
-            return torch.tensor([0])
+            return torch.FloatTensor([0])
 
         ##### Prepare Transition Data Batch #####
         # Randomly sample BATCH_SIZE Transition tuples (state, action, reward, next_state),
@@ -108,9 +111,9 @@ class Agent:
                                                 batch.next_state)), device=self.device, dtype=torch.bool)
         # shape: (B)
         if DEBUG:
-            print("State batch: \n", state_batch)
-            print("Action batch: \n", action_batch)
-            print("Reward batch: \n", reward_batch)
+            print("State batch: \n", state_batch, "type: ", state_batch.type())  # # torch.FloatTensor
+            print("Action batch: \n", action_batch, "type: ", action_batch.type())  # torch.LongTensor
+            print("Reward batch: \n", reward_batch, "type: ", reward_batch.type())  # torch.FloatTensor
             print("Locations of non-final next states: \n", non_final_mask)
             print("-----")
 
@@ -128,6 +131,7 @@ class Agent:
         if DEBUG:
             print("Predicted Q values (LHS) = Q(s,a)")
             print("= ", state_action_values)
+            print("type: ", state_action_values.type())  # torch.FloatTensor
 
         ### RHS: r + gamma * max_a'( Q(s',a') ) ###
         # next_state_values :
@@ -146,6 +150,7 @@ class Agent:
         if DEBUG:
             print("Target Q values (RHS) = r + gamma * max_a'( Q(s',a') )")
             print("= ", expected_state_action_values)
+            print("type: ", expected_state_action_values.type())  # torch.FloatTensor
 
         ##### Update Network Weights #####
         # Compute the loss between predicted Q values (LHS) and target Q values (RHS).
@@ -157,6 +162,7 @@ class Agent:
         self.optimizer.zero_grad()
         loss.backward()
         for param in self.policy_net.parameters():
+            # print(param)
             # Gradients are clipped within range [-1,1], to prevent exploding magnitude of gradients
             # and failure of training.
             param.grad.data.clamp_(-1, 1)
@@ -200,16 +206,11 @@ class Agent:
             # Similarly, it can only buy stocks when it's holding nothing
             # action = 2 >> buy, action = 1 >> no sell no buy, action = 0 >> sell
             # Only valid actions can be returned.
-            if self.holding_stock and action in [0, 1]:
+            if self.env.holding_stocks and action in [0, 1]:
                 break
-            elif not self.holding_stock and action in [1, 2]:
+            elif not self.env.holding_stocks and action in [1, 2]:
                 break
 
-        # Change the state of self.holding_stock
-        if action == 0:  # Sell the stocks
-            self.holding_stock = False
-        if action == 2:  # Buy some stocks
-            self.holding_stock = True
         return action
 
     def train(self):
@@ -217,7 +218,7 @@ class Agent:
         start_time = time()  # Timer
         global_steps = 0
         for episode in range(self.n_episodes):
-            if episode % 100 == 0:
+            if episode % 1 == 0:
                 print("===== Episode {} =====".format(episode))
             ##### 2.1. (Game Starts) Initialization of Mountain Car Environment #####
             # Initialize the environment, get initial state
@@ -230,7 +231,6 @@ class Agent:
             done = None  # To mark if current episode is done
             episode_reward = 0  # Sum of rewards received in current episode
             loss_meter = AverageMeter()
-            self.holding_stock = False
 
             # Loop till end of episode (done = True)
             while not done:
@@ -246,13 +246,14 @@ class Agent:
                 else:
                     next_state = None
 
-                # reward: convert to tensor with shape (1)
-                reward = torch.tensor([reward], device=self.device)
+                if reward is not None:
+                    reward = torch.FloatTensor([reward])
 
                 self.memory.push(state, action, reward, next_state)
 
-                loss = self.experience_replay(DEBUG=False)
-                loss_meter.update(loss)
+                if reward is not None:
+                    loss = self.experience_replay(DEBUG=True)
+                    loss_meter.update(loss.item())
 
                 if global_steps % self.target_update_step == 0:
                     self.target_net.load_state_dict(self.policy_net.state_dict())
@@ -260,7 +261,8 @@ class Agent:
                 # Update training results at the end of episode.
                 state = next_state
                 global_steps += 1
-                episode_reward += reward.item()
+                if reward:
+                    episode_reward += reward
 
             # Logging after an episode
             end_time = time()
@@ -277,7 +279,7 @@ class Agent:
                 print("====================")
     
 
-def preprocess_state(state, device=None) :
+def preprocess_state(state, device=None):
     """
     To convert the state prepared by Gym and to a format
     that is convenient for later processing 
@@ -303,4 +305,3 @@ def preprocess_state(state, device=None) :
     state = state.to(device)
 
     return state
-

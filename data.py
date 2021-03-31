@@ -2,12 +2,14 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 
+
 def load_env(ticker='aapl'):
     data_path = "Dataset/Stocks/{}.us.txt".format(ticker) 
     df = pd.read_csv(data_path)
     df.index = df["Date"]
-    df = df[["Open","Close"]]
+    df = df[["Open", "Close"]]
     return Environment(df)
+
 
 class Environment:
     def __init__(self, data_df):
@@ -21,12 +23,13 @@ class Environment:
         self.state_shape = 1
         self.state = np.zeros(self.state_shape)
         self.date = self.start
+        self.holding_stocks = False
     
     def reset(self, date=None):
         if date == None:
             self.date = self.start
         else:
-            while not self.data_df.loc[data]:
+            while not self.data_df.loc[date]:
                 date = (datetime.strptime(date, '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d')
             self.date = date
         self.state = np.zeros(self.state_shape)
@@ -52,20 +55,28 @@ class Environment:
         date_index = self.date
         # open = self.data_df.loc[date_index]["Open"]
         close = self.data_df.loc[date_index]["Close"]
-        print(close, action, self.state)
+        # print(close, action, self.state)
         
         # take the but/sell action
         # action = 2 >> buy, action = 1 >> no sell no buy, action = 0 >> sell
-        profit = None
+        reward = 0
 
         if action == 0:  # The agent has sold the stocks
+            self.holding_stocks = False
             # TODO: Calculate profit here
-            profit = 0
+            reward = 1
+        elif action == 1:  # No-op
+            # If the agent is holding stocks, set the reward as None and
+            # the agent will handle reward calculation later. If the agent
+            # is not holding stocks and doesn't intend to buy, the reward is 0.
+            reward = None if self.holding_stocks else 0
+        else:  # Buy some stocks
+            self.holding_stocks = True
+            reward = None
 
-        
         self.state += action - 1
         # return - (action - 1) * close
-        return profit
+        return reward
 
 # def load_env(tickers=['aapl']):
 #     data_df = None

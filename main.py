@@ -15,9 +15,10 @@ invest_ex = Experiment('invest')
 def base_config():
     gamma = 0.99
     start_learning = 10
-    memory_size = 1000000
+    memory_size = 33590
     batch_size = 32
     target_update_step = 10
+    policy_update_step = 3
     test_interval = 100
 
     init_epsilon = 1
@@ -32,12 +33,14 @@ def base_config():
 
 
 @invest_ex.main
-def run(gamma, start_learning, memory_size, batch_size, target_update_step, test_interval,
-        init_epsilon, epsilon_decay_rate, epsilon_decay_step, learning_rate, n_episodes, n_actions):
+def run(gamma, start_learning, memory_size, batch_size, target_update_step, policy_update_step,
+        test_interval, init_epsilon, epsilon_decay_rate, epsilon_decay_step, learning_rate,
+        n_episodes, n_actions):
     env = load_env()
     logger = Logger(invest_ex.observers[0].dir)
-    agent = Agent(env, logger, gamma, start_learning, memory_size, batch_size, target_update_step, test_interval,
-                  init_epsilon, epsilon_decay_rate, epsilon_decay_step, learning_rate, n_episodes, n_actions)
+    agent = Agent(env, logger, gamma, start_learning, memory_size, batch_size, target_update_step,
+                  policy_update_step, test_interval, init_epsilon, epsilon_decay_rate,
+                  epsilon_decay_step, learning_rate, n_episodes, n_actions)
     agent.train()
 
 
