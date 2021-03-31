@@ -28,7 +28,7 @@ def base_config():
     epsilon_decay_step = 10
     learning_rate = 0.001
 
-    n_episodes = 40000000
+    n_episodes = 400
 
     n_actions = 3
 
@@ -49,5 +49,5 @@ def run(gamma, start_learning, memory_size, batch_size, target_update_step, poli
 
 if __name__ == '__main__':
     sacred.SETTINGS['CAPTURE_MODE'] = 'sys'
-    invest_ex.observers.append(FileStorageObserver('runs'))
+    invest_ex.observers.append(FileStorageObserver('runs/invest_runs'))
     invest_ex.run_commandline()
