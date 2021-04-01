@@ -102,7 +102,7 @@ def run(exp_name, metric, spec, tune_run_kwargs, use_skopt, skopt_search_mode,
         assert skopt_search_mode in {'min', 'max'}, \
             'skopt_search_mode must be "min" or "max", as appropriate for ' \
             'the metric being optimised'
-        # assert len(skopt_space) > 0, "was passed an empty skopt_space"
+        assert len(skopt_space) > 0, "was passed an empty skopt_space"
 
         # do some sacred_copy() calls to ensure that we don't accidentally put
         # a ReadOnlyDict or ReadOnlyList into our optimizer
