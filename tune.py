@@ -27,6 +27,7 @@ cwd = os.getcwd()
 def base_config():
     exp_name = 'tune'
     metric = 'avg_reward'
+    tune_mode = 'max'
 
     use_skopt = True
     skopt_search_mode = 'max'
@@ -42,14 +43,15 @@ def base_config():
         # Using just a single value:
         # ('batch_size', [32, 64, 128]),
         ('batch_size', [32, 64, 128]),
+        ('learning_rate', (1e-4, 1e-2, 'log-uniform')),
     ])
     skopt_ref_configs = []
 
     spec = dict(
-        batch_size=tune.grid_search([32, 64, 128])
+        batch_size=tune.grid_search([32, 64, 128]),
     )
 
-    tune_run_kwargs = dict()
+    tune_run_kwargs = dict(num_samples=20)
 
 
 def run_exp(config, log_dir):
@@ -61,7 +63,19 @@ def run_exp(config, log_dir):
     observer = FileStorageObserver(osp.join(log_dir, 'tune'))
     invest_ex.observers.append(observer)
     ret_val = invest_ex.run(config_updates=config)
+    report_experiment_result(ret_val.result)
     return ret_val.result
+
+
+def report_experiment_result(sacred_result):
+    """To be run after an experiment."""
+    filtered_result = {
+        k: v
+        for k, v in sacred_result.items() if isinstance(v, (int, float))
+    }
+    print(
+        f"Got sacred result with keys {', '.join(filtered_result.keys())}")
+    tune.report(**filtered_result)
 
 
 class CheckpointFIFOScheduler(FIFOScheduler):
@@ -69,9 +83,6 @@ class CheckpointFIFOScheduler(FIFOScheduler):
     algorithm. Useful for, e.g., SkOptSearch, where it is helpful to be able to
     re-instantiate the search object later on."""
 
-    # FIXME: this is a stupid hack, inherited from another project. There
-    # should be a better way of saving skopt internals as part of Ray Tune.
-    # Perhaps defining a custom trainable would do the trick?
     def __init__(self, search_alg):
         self.search_alg = weakref.proxy(search_alg)
 
@@ -87,7 +98,7 @@ class CheckpointFIFOScheduler(FIFOScheduler):
 
 
 @tune_ex.main
-def run(exp_name, metric, spec, tune_run_kwargs, use_skopt, skopt_search_mode,
+def run(exp_name, metric, tune_mode, spec, tune_run_kwargs, use_skopt, skopt_search_mode,
         skopt_space, skopt_ref_configs):
     spec = sacred_copy(spec)
     log_dir = tune_ex.observers[0].dir
@@ -160,7 +171,7 @@ def run(exp_name, metric, spec, tune_run_kwargs, use_skopt, skopt_search_mode,
         **tune_run_kwargs,
     )
 
-    best_config = tune_run.get_best_config(metric=metric)
+    best_config = tune_run.get_best_config(metric=metric, mode=tune_mode)
     print(f"Best config is: {best_config}")
     print("Results available at: ")
     print(tune_run._get_trial_paths())

@@ -15,7 +15,7 @@ class Logger:
         with open(self.progress_file) as json_file:
             data = json.load(json_file)
 
-        for key, value in dic:
+        for key, value in dic.items():
             if key in data.keys():
                 data[key].append(value)
             else:
