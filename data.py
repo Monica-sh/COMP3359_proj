@@ -12,6 +12,7 @@ def load_env(root_dir, ticker='aapl'):
     df = df.drop(['Date'], axis=1)
     return Environment(df)
 
+
 class Environment:
     def __init__(self, raw_df):
         '''
@@ -83,12 +84,11 @@ class Environment:
         
         # take the but/sell action
         # action = 2 >> buy, action = 1 >> no sell no buy, action = 0 >> sell
-        reward = 0 #TODO this line seems can be deleted 
 
-        if action == 0 and self.holding_stocks == True:  # The agent has sold the stocks
+        if action == 0 and self.holding_stocks is True:  # The agent has sold the stocks
             self.holding_stocks = False
             reward = close - self.buy_price
-        elif action == 2 and self.holding_stocks == False:  # Buy some stocks
+        elif action == 2 and self.holding_stocks is False:  # Buy some stocks
             self.holding_stocks = True
             self.buy_price = open
             self.buy_date = self.date
