@@ -229,7 +229,8 @@ class Agent:
                 print("===== Episode {} =====".format(episode))
             ##### 2.1. (Game Starts) Initialization of Mountain Car Environment #####
             # Initialize the environment, get initial state
-            state = self.env.reset()
+            #! you can change the beginning date here
+            state = self.env.reset(date="2014-01-01")
             #preprocess state
             state = preprocess_state(state, self.device)
 

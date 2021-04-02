@@ -8,35 +8,52 @@ def load_env(ticker='aapl'):
     data_path = "Dataset/Stocks/{}.us.txt".format(ticker) 
     df = pd.read_csv(data_path)
     df.index = df["Date"]
-    df = df[["Open", "Close"]]
     return Environment(df)
 
 
 class Environment:
-    def __init__(self, data_df):
+    def __init__(self, raw_df):
         '''
-        state: one postition storing number of shares, buy one time = 1 share added
+        data_df: 6 columns [Open, High, Low, Close, Volume, OpenInt] and Index with Date.
+
+        state: 
+        
+        one postition storing number of shares, buy one time = 1 share added
         Reminder: all date is represented by the string
         '''
-        self.data_df = data_df
+        self.data_df = raw_df
         self.start = data_df.index[0]
         self.end = data_df.index[-1]
-        self.state_shape = 1
-        # self.state = np.zeros(self.state_shape)
-        self.state = np.random.rand(self.state_shape)
+        self.state_shape = 7
+        self.state = np.random.rand(2, size = self.state_shape) #generating [0 or 1]*7 #TODO
+
         self.date = self.start
-        self.holding_stocks = False
+        self.reset()
+
+        # self.state = np.zeros(self.state_shape)
+        self.state = np.random.rand(self.state_shape) #TODO rand ?? int ??
+        
+        self.holding_stocks = False #TODO
     
     def reset(self, date=None):
         if date == None:
             self.date = self.start
         else:
-            while not self.data_df.loc[date]:
+            while date not in self.data_df.index:
                 date = (datetime.strptime(date, '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d')
             self.date = date
-        self.state = np.random.rand(self.state_shape)
+        
+        position = 
+        prices = self.data_df[date]
+        self.state = np.random.rand(self.state_shape) #TODO ?? rand ??
 
         return self.state
+    
+    # construct data set after defining self.date
+    def process_data(self):
+        #normalise data
+        pass
+        
 
     def step(self, action):
         '''
