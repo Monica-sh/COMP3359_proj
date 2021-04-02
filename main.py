@@ -1,3 +1,4 @@
+import os
 import torch
 import sacred
 
@@ -27,16 +28,18 @@ def base_config():
     epsilon_decay_step = 10
     learning_rate = 0.001
 
-    n_episodes = 40000000
+    n_episodes = 400
 
     n_actions = 3
+
+    root_dir = os.getcwd()
 
 
 @invest_ex.main
 def run(gamma, start_learning, memory_size, batch_size, target_update_step, policy_update_step,
         test_interval, init_epsilon, epsilon_decay_rate, epsilon_decay_step, learning_rate,
-        n_episodes, n_actions):
-    env = load_env()
+        n_episodes, n_actions, root_dir):
+    env = load_env(root_dir)
     logger = Logger(invest_ex.observers[0].dir)
     agent = Agent(env, logger, gamma, start_learning, memory_size, batch_size, target_update_step,
                   policy_update_step, test_interval, init_epsilon, epsilon_decay_rate,
@@ -46,5 +49,5 @@ def run(gamma, start_learning, memory_size, batch_size, target_update_step, poli
 
 if __name__ == '__main__':
     sacred.SETTINGS['CAPTURE_MODE'] = 'sys'
-    invest_ex.observers.append(FileStorageObserver('runs'))
+    invest_ex.observers.append(FileStorageObserver('runs/invest_runs'))
     invest_ex.run_commandline()
