@@ -29,7 +29,7 @@ def base_config():
     metric = 'avg_reward'
     tune_mode = 'max'
 
-    use_skopt = True
+    use_skopt = False
     skopt_search_mode = 'max'
     skopt_space = collections.OrderedDict([
         # Below are some examples of ways you can declare opt variables.
@@ -48,10 +48,17 @@ def base_config():
     skopt_ref_configs = []
 
     spec = dict(
-        batch_size=tune.grid_search([32, 64, 128]),
+        norm_reward=tune.grid_search([True, False]),
+        norm_state=tune.grid_search([True, False])
     )
 
-    tune_run_kwargs = dict(num_samples=20)
+    tune_run_kwargs = dict(
+        num_samples=4,
+        resources_per_trial=dict(
+            cpu=1,
+            gpu=0.25,
+        )
+    )
 
 
 def run_exp(config, log_dir):

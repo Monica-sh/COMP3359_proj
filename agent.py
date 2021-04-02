@@ -10,6 +10,7 @@ import torch.nn.functional as F
 from network import MLPPolicy
 from memory import Transition, ReplayMemory
 from utils import AverageMeter
+import datetime
 
 
 class Agent:
@@ -230,7 +231,8 @@ class Agent:
                 print("===== Episode {} =====".format(episode))
             ##### 2.1. (Game Starts) Initialization of Mountain Car Environment #####
             # Initialize the environment, get initial state
-            state = self.env.reset()
+            #! you can change the beginning date here
+            state = self.env.reset(date="2014-01-01")
             #preprocess state
             state = preprocess_state(state, self.device)
 
@@ -261,7 +263,10 @@ class Agent:
 
                 if reward is not None:
                     loss = self.experience_replay(DEBUG=False)
-                    print(f"Steps: {global_steps}, loss: {loss}")
+                    print(f"Episode [{episode}/{self.n_episodes}] "
+                          f"Steps: {global_steps}, "
+                          f"loss: {loss}, "
+                          f"Time elapsed: {str(datetime.timedelta(seconds=time() - start_time))}")
                     loss_meter.update(loss.item())
 
                 if global_steps % self.target_update_step == 0:
@@ -281,6 +286,7 @@ class Agent:
 
             # Print out logging messages
             if episode % 10 == 0:
+                print("====================")
                 print("Time: ", end_time - start_time)
                 print("Global Steps: ", global_steps)
                 print("Epsilon: ", self.epsilon)
@@ -305,12 +311,12 @@ def preprocess_state(state, device=None):
     - state: state as a PyTorch tensor with type float and
              shape (1,2)
     """
-    #                                # The following values are default values.
-    #                                # variable type | value type | data shape
-    # input state                    # numpy.ndarray |   float64  | (2,)  
-    state = torch.from_numpy(state)  # torch.Tensor  |   double   | (2)  
-    state = state.float()            # torch.Tensor  |   float    | (2)  
-    state = state.unsqueeze(0)       # torch.Tensor  |   float    | (1,2)  
+    #                                           # The following values are default values.
+    #                                           # variable type | value type | data shape
+    # input state                               # numpy.ndarray |   float64  | (2,)  #! pandas series not numpy
+    state = torch.from_numpy(np.array(state))   # torch.Tensor  |   double   | (2)  #! float64
+    state = state.float()                       # torch.Tensor  |   float    | (2)  
+    state = state.unsqueeze(0)                  # torch.Tensor  |   float    | (1,2)  
 
     # Pass state tensor to the specified computation device 
     # (if None, the default device is used)

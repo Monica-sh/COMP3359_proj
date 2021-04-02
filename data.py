@@ -5,39 +5,64 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 
-def load_env(root_dir, ticker='aapl'):
+def load_env(root_dir, ticker='aapl', norm_state=True):
     data_path = os.path.join(root_dir, "Dataset/Stocks/{}.us.txt".format(ticker))
     df = pd.read_csv(data_path)
     df.index = df["Date"]
-    df = df[["Open", "Close"]]
-    return Environment(df)
+    df = df.drop(['Date'], axis=1)
+    return Environment(df, norm_state=norm_state)
 
 
 class Environment:
-    def __init__(self, data_df):
+    def __init__(self, raw_df, norm_state=True):
         '''
-        state: one postition storing number of shares, buy one time = 1 share added
+        data_df: 6 columns [Open, High, Low, Close, Volume, OpenInt] and Index with Date.
+
+        state: 
+        
+        one postition storing number of shares, buy one time = 1 share added
         Reminder: all date is represented by the string
         '''
-        self.data_df = data_df
-        self.start = data_df.index[0]
-        self.end = data_df.index[-1]
-        self.state_shape = 1
+        self.raw_df = raw_df
+        self.start = raw_df.index[0]
+        self.end = raw_df.index[-1]
+        self.state_shape = 6
+        self.norm_state = norm_state
+
+        # self.data_df = None
         # self.state = np.zeros(self.state_shape)
-        self.state = np.random.rand(self.state_shape)
+        # self.holding_stocks = False
+        # self.buy_price = None
+        # self.buy_date = None
+
         self.date = self.start
-        self.holding_stocks = False
+        # self.reset() 
     
     def reset(self, date=None):
         if date == None:
             self.date = self.start
         else:
-            while not self.data_df.loc[date]:
+            while date not in self.raw_df.index:
                 date = (datetime.strptime(date, '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d')
             self.date = date
-        self.state = np.random.rand(self.state_shape)
+        
+        self.process_data()
+        self.state = self.data_df.loc[self.date]
+        self.holding_stocks = False
+        self.buy_price = None
+        self.buy_date = None
 
         return self.state
+    
+    # construct data set after defining self.date
+    def process_data(self):
+        #normalise data
+        data_df = self.raw_df[self.date:]
+        if self.norm_state:
+            df_max = np.max(data_df, axis=0)
+            self.data_df = (data_df / df_max).fillna(0)
+        else:
+            self.data_df = data_df
 
     def step(self, action):
         '''
@@ -46,148 +71,36 @@ class Environment:
         if self.date == self.end:
             # close all positions and return done == True 
             reward = self.calculate_pnl(action)
-            return np.ndarray(-1), reward, True
+            return None, reward, True
         
         reward = self.calculate_pnl(action)
         idx = np.searchsorted(self.data_df.index, self.date)
         self.date = self.data_df.index[idx+1]
+        self.state = self.data_df.loc[self.date]
 
         return self.state, reward, False
 
     def calculate_pnl(self, action):
         date_index = self.date
-        # open = self.data_df.loc[date_index]["Open"]
-        close = self.data_df.loc[date_index]["Close"]
+        open = self.raw_df.loc[self.date]["Open"]
+        close = self.raw_df.loc[self.date]["Close"]
         # print(close, action, self.state)
         
         # take the but/sell action
         # action = 2 >> buy, action = 1 >> no sell no buy, action = 0 >> sell
-        reward = 0
 
-        if action == 0:  # The agent has sold the stocks
+        if action == 0 and self.holding_stocks is True:  # The agent has sold the stocks
             self.holding_stocks = False
-            # TODO: Calculate profit here
-            reward = 1
-        elif action == 1:  # No-op
+            reward = close - self.buy_price
+        elif action == 2 and self.holding_stocks is False:  # Buy some stocks
+            self.holding_stocks = True
+            self.buy_price = open
+            self.buy_date = self.date
+            reward = None
+        else:  # No-op
             # If the agent is holding stocks, set the reward as None and
             # the agent will handle reward calculation later. If the agent
             # is not holding stocks and doesn't intend to buy, the reward is 0.
             reward = None if self.holding_stocks else 0
-        else:  # Buy some stocks
-            self.holding_stocks = True
-            reward = None
 
-        self.state += action - 1
-        # return - (action - 1) * close
         return reward
-
-# def load_env(tickers=['aapl']):
-#     data_df = None
-#     for i in range(len(tickers)):
-#         data_path = "Dataset/Stocks/{}.us.txt".format(tickers[i]) 
-#         df = pd.read_csv(data_path)
-#         df = df[["Date","Open","Close"]]
-#         # print(df.head(), df.iloc[2,0], type(df.iloc[2,0]))
-#         if data_df == None:
-#             df = df.rename(columns={"Open": "Open1", "Close": "Close1"}, errors="raise")
-#             data_df = df
-#         else:
-#             data_df = pd.merge(data_df, df, how='inner', on=['Date'], suffixes=['', str(i)])
-
-#     return Environment(data_df, len(tickers))
-
-
-# class Environment:
-#     def __init__(self, data_df, num_stocks):
-#         '''
-#         state: 2d of current position & initial capital inputs
-#                 e.g. [[0,10,-20],
-#                       [0, -150, 400]]   
-#                 means holding 0 shares in stock[0],
-#                 10 shares in stock[1] & spent 150 dollars,
-#                 short-sold 20 shares in stock[2] & sold for 400 dollars.
-#         '''
-#         self.data_df = data_df
-#         self.start = datetime.strptime(data_df.iloc[0,0], '%Y-%m-%d')
-#         self.end = datetime.strptime(data_df.iloc[-1,0], '%Y-%m-%d')
-#         self.state_shape = (2, num_stocks)
-
-#         self.state = np.zeros(self.state_shape)
-#         self.date = self.start
-    
-#     def reset(self, date=None):
-#         if date == None:
-#             self.date = self.start
-#         else:
-#             while not self.data_df.loc[data]:
-#                 date = (datetime.strptime(date, '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d')
-#             self.date = datetime.strptime(date, '%Y-%m-%d')
-#         self.state = np.zeros(self.state_shape)
-
-#     def process_data(self):
-#         pass
-
-#     def step(self, actions):
-#         '''
-#         input: action as an int list, positive = buy, negative = sell
-#         '''
-#         if self.date == self.last:
-#             # close all positions and return done == True
-#             actions = - self.state 
-#             reward = self.calculate_pnl(actions)
-#             return None, reward, done
-        
-#         reward = self.calculated_pnl(actions)
-
-#         self.date += timedelta(days=1)
-        
-#         return self.state, reward, done
-
-#     def calculate_pnl(self, actions):
-#         date_index = self.date.strftime('%Y-%m-%d')
-#         prices = self.data_df.loc[date_index]
-#         open = []
-#         close = []
-#         for i in range(self.state_shape[1]):
-#             open.append(prices[i * 2])
-#             close.append(prices[i * 2 +1])
-        
-#         # take the but/sell action
-#         i = 0
-#         reward = 0
-#         for a in actions:
-#             if a == 0:
-#                 continue
-#             elif a > 0:
-#                 if self.state[0,i] >= 0:
-#                     #simply adding long position
-
-#                     self.state[1,i] -= open[i] * a
-#                 elif self.state[0,i] < -a:
-#                     # shortselling not closed
-#                     rewards += (a / (- self.state[0,i])) * self.state[1,i] - open[i] * a
-#                     self.state[1,i] = (1 - a / (- self.state[0,i])) * self.state[1,i]
-
-#                 else:
-#                     # shortselling postition closed and will long postition left
-#                     reward += self.state[1,i] - open[i] * (- self.state[0,i])
-#                     self.state[1,i] = - open[i] * (a - self.state[0,i])
-
-#             else:
-#                 if self.state[0,i] < 0:
-#                     # simply add short position
-
-#                     self.state[1,i] += close[i] * a
-#                 elif self.state[0,i] > -a :
-#                     # long position is not closed
-#                     reward += close[i] * a - self.state[1,i] * ( - a /self.state[0,i])
-#                     self.state[1,i] = self.state[1,i] * (1 + a /self.state[0,i])
-#                 else:
-#                     # long postion closed
-#                     reward += close[i] * (self.state[0,i]/ (- a)) - self.state[1,i]
-#                     self.state[1,i] = close[i] * (a + self.state[0,i])
-                
-#             i+=1
-        
-#         self.state[0] += actions
-#         return reward
