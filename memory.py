@@ -1,5 +1,6 @@
 from namedlist import namedlist
 import copy
+import numpy as np
 from sklearn.preprocessing import normalize
 import random
 import torch
@@ -63,17 +64,15 @@ class ReplayMemory(object):
                 break
 
     def normalize_reward(self):
-        r_list = [trans.reward for trans in self.memory]
-        r_list = normalize(r_list)
+        r_list = np.array([trans.reward.item() for trans in self.memory])
+        r_list = normalize(r_list.reshape(1, -1), norm='max').squeeze()
 
         # Create a copy of the memory so we don't modify the
         # actual memory when normalizing reward.
         memory_copy = copy.deepcopy(self.memory)
 
         for idx, trans in enumerate(memory_copy):
-            trans.reward = r_list[idx]
-
-        # TODO: Double check if the original memory is modified.
+            trans.reward = torch.FloatTensor([r_list[idx]])
 
         return memory_copy
 
