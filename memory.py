@@ -1,5 +1,6 @@
 from namedlist import namedlist
-import numpy as np
+import copy
+from sklearn.preprocessing import normalize
 import random
 import torch
 
@@ -22,8 +23,8 @@ class ReplayMemory(object):
 
     def sample(self, batch_size):
         self.process_reward()
-        print("Finished processing reward")
-        return random.sample(self.memory, batch_size)
+        processed_memory = self.normalize_reward()
+        return random.sample(processed_memory, batch_size)
 
     def __len__(self):
         return len(self.memory)
@@ -45,7 +46,7 @@ class ReplayMemory(object):
             first_none_idx = r_list.index(None)
         while True:
             if None in r_list:
-                print(r_list)
+                # print(r_list)
                 none_idx = r_list.index(None)
                 day_count = 0
                 for i in range(none_idx, len(r_list)):
@@ -61,5 +62,18 @@ class ReplayMemory(object):
                     idx += 1
                 break
 
+    def normalize_reward(self):
+        r_list = [trans.reward for trans in self.memory]
+        r_list = normalize(r_list)
 
+        # Create a copy of the memory so we don't modify the
+        # actual memory when normalizing reward.
+        memory_copy = copy.deepcopy(self.memory)
+
+        for idx, trans in enumerate(memory_copy):
+            trans.reward = r_list[idx]
+
+        # TODO: Double check if the original memory is modified.
+
+        return memory_copy
 
