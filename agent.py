@@ -10,6 +10,7 @@ import torch.nn.functional as F
 from network import MLPPolicy
 from memory import Transition, ReplayMemory
 from utils import AverageMeter
+import datetime
 
 
 class Agent:
@@ -262,7 +263,10 @@ class Agent:
 
                 if reward is not None:
                     loss = self.experience_replay(DEBUG=False)
-                    print(f"Steps: {global_steps}, loss: {loss}")
+                    print(f"Episode [{episode}/{self.n_episodes}] "
+                          f"Steps: {global_steps}, "
+                          f"loss: {loss}, "
+                          f"Time elapsed: {str(datetime.timedelta(seconds=time() - start_time))}")
                     loss_meter.update(loss.item())
 
                 if global_steps % self.target_update_step == 0:
@@ -282,6 +286,7 @@ class Agent:
 
             # Print out logging messages
             if episode % 10 == 0:
+                print("====================")
                 print("Time: ", end_time - start_time)
                 print("Global Steps: ", global_steps)
                 print("Epsilon: ", self.epsilon)
