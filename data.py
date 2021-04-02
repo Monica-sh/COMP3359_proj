@@ -5,15 +5,15 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 
-def load_env(root_dir, ticker='aapl'):
+def load_env(root_dir, ticker='aapl', norm_state=True):
     data_path = os.path.join(root_dir, "Dataset/Stocks/{}.us.txt".format(ticker))
     df = pd.read_csv(data_path)
     df.index = df["Date"]
     df = df.drop(['Date'], axis=1)
-    return Environment(df)
+    return Environment(df, norm_state=norm_state)
 
 class Environment:
-    def __init__(self, raw_df):
+    def __init__(self, raw_df, norm_state=True):
         '''
         data_df: 6 columns [Open, High, Low, Close, Volume, OpenInt] and Index with Date.
 
@@ -26,6 +26,7 @@ class Environment:
         self.start = raw_df.index[0]
         self.end = raw_df.index[-1]
         self.state_shape = 6
+        self.norm_state = norm_state
 
         # self.data_df = None
         # self.state = np.zeros(self.state_shape)
@@ -34,7 +35,7 @@ class Environment:
         # self.buy_date = None
 
         self.date = self.start
-        self.reset()
+        # self.reset() 
     
     def reset(self, date=None):
         if date == None:
@@ -56,8 +57,11 @@ class Environment:
     def process_data(self):
         #normalise data
         data_df = self.raw_df[self.date:]
-        df_max = np.max(data_df, axis=0)
-        self.data_df = (data_df / df_max).fillna(0)
+        if self.norm_state:
+            df_max = np.max(data_df, axis=0)
+            self.data_df = (data_df / df_max).fillna(0)
+        else:
+            self.data_df = data_df
 
     def step(self, action):
         '''
@@ -77,8 +81,8 @@ class Environment:
 
     def calculate_pnl(self, action):
         date_index = self.date
-        open = self.state["Open"]
-        close = self.state["Close"]
+        open = self.raw_df.loc[self.date]["Open"]
+        close = self.raw_df.loc[self.date]["Close"]
         # print(close, action, self.state)
         
         # take the but/sell action
