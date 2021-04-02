@@ -10,10 +10,11 @@ Transition = namedlist('Transition',
 
 
 class ReplayMemory(object):
-    def __init__(self, capacity):
+    def __init__(self, capacity, norm_reward=True):
         self.capacity = capacity
         self.memory = []
         self.position = 0
+        self.norm_reward = norm_reward
 
     def push(self, *args):
         """Saves a transition."""
@@ -24,7 +25,9 @@ class ReplayMemory(object):
 
     def sample(self, batch_size):
         self.process_reward()
-        processed_memory = self.normalize_reward()
+        processed_memory = self.memory
+        if self.norm_reward:
+            processed_memory = self.normalize_reward()
         return random.sample(processed_memory, batch_size)
 
     def __len__(self):

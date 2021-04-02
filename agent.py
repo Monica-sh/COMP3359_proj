@@ -28,7 +28,8 @@ class Agent:
                  epsilon_decay_step,
                  learning_rate,
                  n_episodes,
-                 n_actions):
+                 n_actions,
+                 norm_reward=True):
 
         self.env = env
         self.gamma = gamma
@@ -46,7 +47,7 @@ class Agent:
         self.policy_net = MLPPolicy(n_actions, env.state_shape).to(self.device).float()
         self.target_net = MLPPolicy(n_actions, env.state_shape).to(self.device).float()
         self.optimizer = torch.optim.Adam(self.policy_net.parameters(), lr=learning_rate)
-        self.memory = ReplayMemory(memory_size)
+        self.memory = ReplayMemory(memory_size, norm_reward=norm_reward)
         self.logger = logger
         self.epsilon = init_epsilon
 
@@ -259,7 +260,8 @@ class Agent:
                 self.memory.push(state, action, reward, next_state)
 
                 if reward is not None:
-                    loss = self.experience_replay(DEBUG=True)
+                    loss = self.experience_replay(DEBUG=False)
+                    print(f"Steps: {global_steps}, loss: {loss}")
                     loss_meter.update(loss.item())
 
                 if global_steps % self.target_update_step == 0:
@@ -269,7 +271,7 @@ class Agent:
                 state = next_state
                 global_steps += 1
                 if reward:
-                    episode_reward += reward
+                    episode_reward += reward[0].item()
 
             # Logging after an episode
             end_time = time()
@@ -278,7 +280,7 @@ class Agent:
                                 'loss': loss_meter.avg})
 
             # Print out logging messages
-            if episode % 100 == 0:
+            if episode % 10 == 0:
                 print("Time: ", end_time - start_time)
                 print("Global Steps: ", global_steps)
                 print("Epsilon: ", self.epsilon)
