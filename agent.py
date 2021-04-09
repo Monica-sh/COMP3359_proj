@@ -8,7 +8,7 @@ import torch
 import torch.nn.functional as F
 
 from network import MLPPolicy
-from memory import Transition, ReplayMemory
+from memory import ReplayMemory
 from utils import AverageMeter
 import datetime
 
@@ -23,14 +23,15 @@ class Agent:
                  batch_size,
                  target_update_step,
                  policy_update_step,
-                 test_interval,
+                 max_episode_step,
                  init_epsilon,
+                 epsilon_minimum,
                  epsilon_decay_rate,
                  epsilon_decay_step,
                  learning_rate,
                  n_episodes,
                  n_actions,
-                 norm_reward=True):
+                 print_interval):
 
         self.env = env
         self.gamma = gamma
@@ -38,140 +39,67 @@ class Agent:
         self.batch_size = batch_size
         self.target_update_step = target_update_step
         self.policy_update_step = policy_update_step
-        self.test_interval = test_interval
+        self.max_episode_step = max_episode_step
         self.epsilon_decay_rate = epsilon_decay_rate
         self.epsilon_decay_step = epsilon_decay_step
         self.n_episodes = n_episodes
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.n_actions = n_actions
+        self.print_interval = print_interval
 
         self.policy_net = MLPPolicy(n_actions, env.state_shape).to(self.device).float()
         self.target_net = MLPPolicy(n_actions, env.state_shape).to(self.device).float()
         self.optimizer = torch.optim.Adam(self.policy_net.parameters(), lr=learning_rate)
-        self.memory = ReplayMemory(memory_size, norm_reward=norm_reward)
+        self.memory = ReplayMemory(memory_size, env.state_shape)
         self.logger = logger
         self.epsilon = init_epsilon
+        self.epsilon_minimum = epsilon_minimum
+
+        self.memory_cache = ReplayMemory(self.max_episode_step, env.state_shape)
 
     def experience_replay(self, DEBUG=False):
-        """
-        Input(s) :
-        - policy_net: Policy DQN
-        - target_net: Target DQN
-        - memory: Transition memory buffer
-        - optimizer: optimizer used by dqn model
-        - params: dictionary storing global parameters.
-                  expected parameter:
-                  - params["BATCH_SIZE"]: input batch size
-                  - params["GAMMA"]: discount rate in Q(s,a) = r + gamma * max_a'( Q(s',a') )
-        - DEBUG: print debug messages if true
-        Output(s) :
-        - loss value compute from the sampled input transition batch.
-        """
-
         # Skip training DQN model if there are not enough saved transitions in the memory buffer
         # to give a input batch.
         if len(self.memory) < self.batch_size:
             # Return a loss value = 0 to notice that training is not yet started (only for logging)
             return torch.FloatTensor([0])
 
-        ##### Prepare Transition Data Batch #####
-        # Randomly sample BATCH_SIZE Transition tuples (state, action, reward, next_state),
-        # each of (state, action, reward, next_state) is a PyTorch tensor.
-        # Shapes of tensors (in each 4-tuple in "transitions"):
-        #    state: (1, N_STATES), action: (1, 1), reward: (1), next_state: (1, N_STATES)
-        # "transitions" is then a python list of 4-tuples with length BATCH_SIZE.
-        transitions = self.memory.sample(self.batch_size)
-        # Convert the python list of Transition tuples ("transitions") to one single
-        # Transititon tuple (state, action, reward, next_state) ("batch").
-        # Each of (state, action, reward, next_state) in "batch" is a list (with length BATCH_SIZE)
-        # of tensors of that field in this data batch.
-        batch = Transition(*zip(*transitions))
+        # state batch shape: (B, N_STATES)
+        # action batch shape: (B, 1)
+        # reward batch shape: (B)
+        state_batch, action_batch, reward_batch, next_state_batch = self.memory.sample(self.batch_size)
 
-        # For each list of tensors (batch.[state/action/next_state/reward]) in "batch",
-        # convert the list into one single tensor ([state/action/next_state/reward]_batch).
-        #
-        # torch.cat(...) is used to concatenate a list of B tensors with shape (1, N) to
-        # a tensor with shape (B, N)
-        state_batch = torch.cat(batch.state)  # shape: (B, N_STATES)
-        action_batch = torch.cat(batch.action)  # shape: (B, 1)
-        reward_batch = torch.cat(batch.reward)  # shape: (B)
-
-        # reward_batch = torch.rand(self.batch_size)
-        # state_batch = torch.rand((self.batch_size, self.env.state_shape))  # shape: (B, N_STATES)
-
-        # Now, state_batch has the shape of input data to the DQN model.
-
-        # However, it is not enough to simply concatenate batch.next_state (list of smaller tensors)
-        # as next_state_batch (one larger tensor).
-        # This is because if the terminal state is achieved, next_state is marked as None.
-        # Also, later when we try to predict Q(s',a') for next state s', DQL is not designed to accept
-        # terminal next state, and we will just set the term "gamma * max_a'( Q(s',a') )" to 0.
-        #
-        # Thus, we extract the non-final next state first, which will be used to predict Q(s',a') of
-        # non-final next states later.
-        non_final_next_states = torch.cat([s for s in batch.next_state
-                                           if s is not None]).float()  # shape: (B_non_final)
-        # To keep track of the non-final next states, we use a mask to mark down locations of values
-        # of non-final next states.
-        non_final_mask = torch.tensor(tuple(map(lambda s: s is not None,
-                                                batch.next_state)), device=self.device, dtype=torch.bool)
         # shape: (B)
         if DEBUG:
             print("State batch: \n", state_batch, "type: ", state_batch.type())  # # torch.FloatTensor
             print("Action batch: \n", action_batch, "type: ", action_batch.type())  # torch.LongTensor
             print("Reward batch: \n", reward_batch, "type: ", reward_batch.type())  # torch.FloatTensor
-            print("Locations of non-final next states: \n", non_final_mask)
             print("-----")
 
-        ##### Deep Q Learning #####
-        # Recall the equation of Q Learning:
-        #     Q(s,a) = r + gamma * max_a'( Q(s',a') )
-
-        ### LHS: Q(s,a) ###
-        # policy_net(state_batch) :                                                                # shape: (B, N_ACTIONS)
-        #     Policy DQN predicts Q values of current state Q(s,a) for all possible actions a.
-        # policy_net(state_batch).gather(1, action_batch):
-        #     As we are only interested in updating the Q value Q(s,a) of the taken action a,
-        #     we gather the corresponding the concerned Q value according to index of action in action_batch.
-        # state_action_values = self.policy_net(state_batch.float()).gather(1, action_batch).float()  # shape: (B,1)
-        state_action_values = self.policy_net(state_batch).gather(1, action_batch)  # shape: (B,1)
+        state_action_values = self.policy_net(state_batch).gather(1, action_batch).view(self.batch_size)
         if DEBUG:
             print("Predicted Q values (LHS) = Q(s,a)")
             print("= ", state_action_values)
             print("type: ", state_action_values.type())  # torch.FloatTensor
 
-        ### RHS: r + gamma * max_a'( Q(s',a') ) ###
-        # next_state_values :
-        #     prepare a 0-value tensor for later to store the max predicted Q values max_a'(Q(s',a')).
-        next_state_values = torch.zeros(self.batch_size, device=self.device).float()  # shape: (B)
-        # target_net(non_final_next_states), shape (B_non_final) :
-        #     Target DQN predicts Q values Q(s',a') for all possible actions a' (for non-final next state only)
-        # target_net(non_final_next_states).max(1)[0].detach(), shape (B_non_final)
-        #     max value of predicted Q values max_a'(Q(s',a'))
-        # next_state_values[non_final_mask] = target_net(non_final_next_states).max(1)[0].detach() :
-        #     update only values in next_state_values that correspond to non-final next states
-        next_state_values[non_final_mask] = self.target_net(
-            non_final_next_states.float()).max(1)[0].detach().float()  # shape: (B)
+        # RHS: r + gamma * max_a'( Q(s',a') )
+        next_state_values = torch.max(self.policy_net(next_state_batch))
+
         # expected_state_action_values :
         #     target Q values = r + gamma * max_a'( Q(s',a') )
-        expected_state_action_values = (reward_batch + (self.gamma * next_state_values)).float()  # shape: (B)
+        expected_state_action_values = (reward_batch + (self.gamma * next_state_values)).view(self.batch_size)
         if DEBUG:
             print("Target Q values (RHS) = r + gamma * max_a'( Q(s',a') )")
             print("= ", expected_state_action_values)
             print("type: ", expected_state_action_values.type())  # torch.FloatTensor
 
-        ##### Update Network Weights #####
-        # Compute the loss between predicted Q values (LHS) and target Q values (RHS).
-        # Mean Squared Error (MSE) is used as the loss function:
-        #     loss = (LHS - RHS)^2
-        loss = F.mse_loss(state_action_values,
-                          expected_state_action_values.unsqueeze(1).float())
+        # Update
+        loss = F.mse_loss(state_action_values, expected_state_action_values)
 
         # Update of DQN network weights
         self.optimizer.zero_grad()
         loss.backward()
         for param in self.policy_net.parameters():
-            # print(param)
             # Gradients are clipped within range [-1,1], to prevent exploding magnitude of gradients
             # and failure of training.
             param.grad.data.clamp_(-1, 1)
@@ -184,7 +112,7 @@ class Agent:
         return loss
 
     def get_epsilon(self, global_step):
-        if global_step <= self.epsilon_decay_step:
+        if global_step <= self.epsilon_decay_step and self.epsilon > self.epsilon_minimum:
             self.epsilon *= self.epsilon_decay_rate
 
     def select_action(self, state):
@@ -227,23 +155,22 @@ class Agent:
         start_time = time()  # Timer
         global_steps = 0
         for episode in range(self.n_episodes):
-            if episode % 1 == 0:
+            if episode % self.print_interval == 0:
                 print("===== Episode {} =====".format(episode))
-            ##### 2.1. (Game Starts) Initialization of Mountain Car Environment #####
             # Initialize the environment, get initial state
-            #! you can change the beginning date here
+            # you can change the beginning date here
             state = self.env.reset(date="2014-01-01")
-            #preprocess state
+            # preprocess state
             state = preprocess_state(state, self.device)
 
-            ##### 2.2. Loop for Steps #####
             # Logging for current episode
             done = None  # To mark if current episode is done
             episode_reward = 0  # Sum of rewards received in current episode
+            episode_step = 0  # Cumulative steps in current episode
             loss_meter = AverageMeter()
 
-            # Loop till end of episode (done = True)
-            while not done:
+            # Loop till end of episode (done = True or when step reaches max)
+            while not done and episode_step < self.max_episode_step:
                 self.get_epsilon(global_steps)
 
                 action = self.select_action(state)
@@ -251,22 +178,29 @@ class Agent:
                 next_state, reward, done = self.env.step(action[0][0].item())
 
                 if not done:
-                    #preprocess next_state
+                    # preprocess next_state
                     next_state = preprocess_state(next_state, self.device)
                 else:
                     next_state = None
 
-                if reward is not None:
-                    reward = torch.FloatTensor([reward])
-
-                self.memory.push(state, action, reward, next_state)
+                self.memory_cache.push(state, action, [reward], next_state)
 
                 if reward is not None:
+                    self.memory_cache.process_reward()
+                    push_length = self.memory_cache.position
+                    self.memory.push(self.memory_cache.state[:push_length],
+                                     self.memory_cache.action[:push_length],
+                                     self.memory_cache.reward[:push_length],
+                                     self.memory_cache.next_state[:push_length])
+                    self.memory_cache.reset()
+
                     loss = self.experience_replay(DEBUG=False)
-                    print(f"Episode [{episode}/{self.n_episodes}] "
-                          f"Steps: {global_steps}, "
-                          f"loss: {loss}, "
-                          f"Time elapsed: {str(datetime.timedelta(seconds=time() - start_time))}")
+
+                    # print(f"Episode [{episode}/{self.n_episodes}] "
+                    #       f"Global steps: {global_steps}, "
+                    #       f"Episode steps: {episode_step}, "
+                    #       f"loss: {loss}, "
+                    #       f"Time elapsed: {str(datetime.timedelta(seconds=time() - start_time))}")
                     loss_meter.update(loss.item())
 
                 if global_steps % self.target_update_step == 0:
@@ -275,8 +209,9 @@ class Agent:
                 # Update training results at the end of episode.
                 state = next_state
                 global_steps += 1
+                episode_step += 1
                 if reward:
-                    episode_reward += reward[0].item()
+                    episode_reward += reward
 
             # Logging after an episode
             end_time = time()
@@ -285,11 +220,13 @@ class Agent:
                                 'loss': loss_meter.avg})
 
             # Print out logging messages
-            if episode % 10 == 0:
+            if episode % self.print_interval == 0:
                 print("====================")
+                print(f"Episode {episode}")
                 print("Time: ", end_time - start_time)
                 print("Global Steps: ", global_steps)
                 print("Epsilon: ", self.epsilon)
+                print("Loss: ", loss_meter.avg)
                 print("Reward: ", episode_reward)
                 print("====================")
 

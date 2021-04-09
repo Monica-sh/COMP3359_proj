@@ -20,32 +20,33 @@ def base_config():
     batch_size = 32
     target_update_step = 10
     policy_update_step = 3
-    test_interval = 100
+    max_episode_step = 360
 
     init_epsilon = 1
     epsilon_minimum = 0.05
     epsilon_decay_rate = 0.9999
-    epsilon_decay_step = 10
+    epsilon_decay_step = 54000
     learning_rate = 0.001
 
-    n_episodes = 2
+    n_episodes = 200
     n_actions = 3
 
     norm_reward = False
     norm_state = True
+    print_interval = 1
 
     root_dir = os.getcwd()
 
 
 @invest_ex.main
 def run(gamma, start_learning, memory_size, batch_size, target_update_step, policy_update_step,
-        test_interval, init_epsilon, epsilon_decay_rate, epsilon_decay_step, learning_rate,
-        n_episodes, n_actions, norm_reward, norm_state, root_dir):
+        max_episode_step, init_epsilon, epsilon_minimum, epsilon_decay_rate, epsilon_decay_step,
+        learning_rate, n_episodes, n_actions, norm_reward, norm_state, root_dir, print_interval):
     env = load_env(root_dir, norm_state=norm_state)
     logger = Logger(invest_ex.observers[0].dir)
     agent = Agent(env, logger, gamma, start_learning, memory_size, batch_size, target_update_step,
-                  policy_update_step, test_interval, init_epsilon, epsilon_decay_rate,
-                  epsilon_decay_step, learning_rate, n_episodes, n_actions, norm_reward=norm_reward)
+                  policy_update_step, max_episode_step, init_epsilon, epsilon_minimum, epsilon_decay_rate,
+                  epsilon_decay_step, learning_rate, n_episodes, n_actions, print_interval)
     avg_reward = agent.train()
     return {'avg_reward': avg_reward}
 

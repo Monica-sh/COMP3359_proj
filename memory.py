@@ -1,81 +1,69 @@
-from namedlist import namedlist
 import copy
+import pdb
 import numpy as np
 from sklearn.preprocessing import normalize
 import random
 import torch
 
-Transition = namedlist('Transition',
-                        ('state', 'action', 'reward', 'next_state'))
-
 
 class ReplayMemory(object):
-    def __init__(self, capacity, norm_reward=True):
+    def __init__(self, capacity, state_dim):
         self.capacity = capacity
-        self.memory = []
+        self.state = np.zeros((capacity, state_dim))
+        self.action = np.zeros(capacity)
+        self.reward = np.zeros(capacity)
+        self.next_state = np.zeros((capacity, state_dim))
         self.position = 0
-        self.norm_reward = norm_reward
+        self.count = 0
 
-    def push(self, *args):
+        self.state_dim = state_dim
+
+    def reset(self):
+        self.__init__(self.capacity, self.state_dim)
+
+    def push(self, state, action, reward, next_state):
         """Saves a transition."""
-        if len(self.memory) < self.capacity:
-            self.memory.append(None)
-        self.memory[self.position] = Transition(*args)
-        self.position = (self.position + 1) % self.capacity
+        length_to_push = len(state)
+        while length_to_push > 0:
+            length = length_to_push if self.position + length_to_push < self.capacity else \
+                self.position + length_to_push - self.capacity
+            length_to_push = length_to_push - length
+
+            self.state[self.position:self.position + length] = state[:length]
+            self.action[self.position:self.position + length] = action[:length]
+            self.reward[self.position:self.position + length] = reward[:length]
+            self.next_state[self.position:self.position + length] = next_state[:length]
+            self.position = (self.position + length) % self.capacity
+            self.count += length
 
     def sample(self, batch_size):
         self.process_reward()
-        processed_memory = self.memory
-        if self.norm_reward:
-            processed_memory = self.normalize_reward()
-        return random.sample(processed_memory, batch_size)
+        state_batch, action_batch, reward_batch, next_state_batch = [], [], [], []
+
+        for i in range(batch_size):
+            idx = random.randint(0, len(self)-1)
+            state_batch.append(self.state[idx])
+            action_batch.append(self.action[idx])
+            reward_batch.append(self.reward[idx])
+            next_state_batch.append(self.next_state[idx])
+
+        reward_batch = normalize(np.array(reward_batch).reshape(1, -1), norm='max')
+        return torch.FloatTensor(state_batch), \
+               torch.LongTensor(action_batch).unsqueeze(dim=1), \
+               torch.FloatTensor(reward_batch), \
+               torch.FloatTensor(next_state_batch)
 
     def __len__(self):
-        return len(self.memory)
+        return self.position if self.count < self.capacity else self.capacity
 
     def process_reward(self):
-        """
-        Since the reward calculation is delayed until the agent sells the stock,
-        this function handles such calculation.
+        none_idxes = np.where(np.isnan(self.reward))[0]
+        for none_idx in none_idxes:
+            day_count = 0
+            for i in range(none_idx, len(self)):
+                day_count += 1
 
-        If the agent is not currently holding stocks and does not buy any, reward = 0.
-        The reward of each day the agent holding stocks is the total profit when it sells
-        the stocks, averaged over the days it holds it.
-
-        """
-
-        r_list = [trans.reward for trans in self.memory]
-        first_none_idx = 0
-        if None in r_list:
-            first_none_idx = r_list.index(None)
-        while True:
-            if None in r_list:
-                # print(r_list)
-                none_idx = r_list.index(None)
-                day_count = 0
-                for i in range(none_idx, len(r_list)):
-                    day_count += 1
-                    if isinstance(r_list[i], torch.Tensor):
-                        profit = r_list[i]
-                        r_list[none_idx:i] = [(profit / day_count).float()
-                                              for _ in range(none_idx, i)]
-            else:
-                idx = first_none_idx
-                for trans in self.memory[first_none_idx:]:
-                    trans.reward = r_list[idx]
-                    idx += 1
-                break
-
-    def normalize_reward(self):
-        r_list = np.array([trans.reward.item() for trans in self.memory])
-        r_list = normalize(r_list.reshape(1, -1), norm='max').squeeze()
-
-        # Create a copy of the memory so we don't modify the
-        # actual memory when normalizing reward.
-        memory_copy = copy.deepcopy(self.memory)
-
-        for idx, trans in enumerate(memory_copy):
-            trans.reward = torch.FloatTensor([r_list[idx]])
-
-        return memory_copy
-
+                if not np.isnan(self.reward[i]):
+                    profit = self.reward[i]
+                    self.reward[none_idx:i] = [profit / day_count for _ in range(none_idx, i)]
+                    break
