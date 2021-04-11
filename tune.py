@@ -25,11 +25,11 @@ cwd = os.getcwd()
 
 @tune_ex.config
 def base_config():
-    exp_name = 'tune'
+    exp_name = 'tune_search'
     metric = 'avg_reward'
     tune_mode = 'max'
 
-    use_skopt = False
+    use_skopt = True
     skopt_search_mode = 'max'
     skopt_space = collections.OrderedDict([
         # Below are some examples of ways you can declare opt variables.
@@ -53,10 +53,10 @@ def base_config():
     )
 
     tune_run_kwargs = dict(
-        num_samples=4,
+        num_samples=20,
         resources_per_trial=dict(
             cpu=1,
-            gpu=0.25,
+            gpu=0,
         )
     )
 
@@ -101,6 +101,8 @@ class CheckpointFIFOScheduler(FIFOScheduler):
             f'search-alg-{trial_runner._session_str}.pkl')
         self.search_alg.save(checkpoint_path + '.tmp')
         os.rename(checkpoint_path + '.tmp', checkpoint_path)
+        # breakpoint()
+        print("ckpt path", checkpoint_path)
         return rv
 
 
@@ -175,6 +177,7 @@ def run(exp_name, metric, tune_mode, spec, tune_run_kwargs, use_skopt, skopt_sea
         trainable_function,
         name=exp_name,
         config=spec,
+        local_dir=tune_ex.observers[0].dir,
         **tune_run_kwargs,
     )
 

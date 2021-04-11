@@ -23,11 +23,16 @@ class ReplayMemory(object):
 
     def push(self, state, action, reward, next_state):
         """Saves a transition."""
-        length_to_push = len(state)
-        while length_to_push > 0:
-            length = length_to_push if self.position + length_to_push < self.capacity else \
-                self.position + length_to_push - self.capacity
-            length_to_push = length_to_push - length
+        remaining_length = len(state)
+        while remaining_length > 0:
+            length = remaining_length if self.position + remaining_length < self.capacity else \
+                self.capacity - self.position
+            remaining_length = remaining_length - length
+
+            if not self.state[self.position:self.position + length].shape == state[:length].shape:
+                print(f"length {length}, remaining length {remaining_length}, "
+                      f"self.position {self.position}, self.capacity {self.capacity}")
+                breakpoint()
 
             self.state[self.position:self.position + length] = state[:length]
             self.action[self.position:self.position + length] = action[:length]

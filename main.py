@@ -16,11 +16,11 @@ invest_ex = Experiment('invest')
 def base_config():
     gamma = 0.99
     start_learning = 10
-    memory_size = 33590
+    memory_size = 10
     batch_size = 32
     target_update_step = 10
     policy_update_step = 3
-    max_episode_step = 360
+    max_episode_step = 20
 
     init_epsilon = 1
     epsilon_minimum = 0.05
@@ -28,7 +28,7 @@ def base_config():
     epsilon_decay_step = 54000
     learning_rate = 0.001
 
-    n_episodes = 200
+    n_episodes = 1
     n_actions = 3
 
     norm_reward = False

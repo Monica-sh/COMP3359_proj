@@ -2,6 +2,7 @@ import json
 import os
 import copy
 import collections
+import pickle
 
 
 class Logger:
@@ -77,3 +78,4 @@ def update(d, *updates):
                 # if the existing value is not a mapping, then overwrite it
                 d[k] = v
     return d
+

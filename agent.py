@@ -155,8 +155,6 @@ class Agent:
         start_time = time()  # Timer
         global_steps = 0
         for episode in range(self.n_episodes):
-            if episode % self.print_interval == 0:
-                print("===== Episode {} =====".format(episode))
             # Initialize the environment, get initial state
             # you can change the beginning date here
             state = self.env.reset(date="2014-01-01")
