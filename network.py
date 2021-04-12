@@ -10,11 +10,11 @@ class MLPPolicy(nn.Module):
         self.fc1 = nn.Linear(self.input_size, 24)
         self.fc2 = nn.Linear(24, 24)
         self.fc3 = nn.Linear(24, self.action_size)
-        self.tanh = nn.Tanh()
-        self.relu = nn.ReLU()
+        self.relu1 = nn.ReLU()
+        self.relu2 = nn.ReLU()
 
     def forward(self, x):
-        x = self.relu(self.fc1(x))
-        x = self.relu(self.fc2(x))
+        x = self.relu1(self.fc1(x))
+        x = self.relu2(self.fc2(x))
         x = self.fc3(x)
         return x
