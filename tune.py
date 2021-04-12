@@ -44,6 +44,12 @@ def base_config():
         # ('batch_size', [32, 64, 128]),
         ('batch_size', [32, 64, 128]),
         ('learning_rate', (1e-4, 1e-2, 'log-uniform')),
+        ('gamma', (0.99, 0.999, 'log-uniform')),
+        ('memory_size', (335, 3350)),
+        ('target_update_step', (10, 100)),
+        ('epsilon_decay_rate', (0.999, 0.99999, 'log-uniform')),
+        ('epsilon_minimum', (0.001, 0.1, 'log-uniform')),
+        ('n_episodes', (200, 2000)),
     ])
     skopt_ref_configs = []
 

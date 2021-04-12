@@ -1,3 +1,5 @@
 .idea/*
 runs/*
 __pycache__/*
+analysis/__pycache__/*
+analysis/.ipynb_checkpoints/*
