@@ -59,10 +59,10 @@ def base_config():
     )
 
     tune_run_kwargs = dict(
-        num_samples=20,
+        num_samples=100,
         resources_per_trial=dict(
             cpu=1,
-            gpu=0,
+            gpu=0.02,
         )
     )
 
