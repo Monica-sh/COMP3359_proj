@@ -83,11 +83,17 @@ class Agent:
             print("type: ", state_action_values.type())  # torch.FloatTensor
 
         # RHS: r + gamma * max_a'( Q(s',a') )
-        next_state_values = torch.max(self.policy_net(next_state_batch))
+        next_state_values = []
+        for next_state in next_state_batch:
+            if next_state is not None:
+                next_state_values.append(self.policy_net(next_state))
+            else:
+                next_state_values.append(torch.FloatTensor([0]))
+        next_state_values = torch.max(torch.stack(next_state_values), dim=1)
 
         # expected_state_action_values :
         #     target Q values = r + gamma * max_a'( Q(s',a') )
-        expected_state_action_values = (reward_batch + (self.gamma * next_state_values)).view(self.batch_size)
+        expected_state_action_values = (reward_batch + (self.gamma * next_state_values.values)).view(self.batch_size)
         if DEBUG:
             print("Target Q values (RHS) = r + gamma * max_a'( Q(s',a') )")
             print("= ", expected_state_action_values)
@@ -157,7 +163,7 @@ class Agent:
         for episode in range(self.n_episodes):
             # Initialize the environment, get initial state
             # you can change the beginning date here
-            state = self.env.reset(date="2014-01-01")
+            state = self.env.reset(date="2016-11-10")
             # preprocess state
             state = preprocess_state(state, self.device)
 
@@ -179,7 +185,7 @@ class Agent:
                     # preprocess next_state
                     next_state = preprocess_state(next_state, self.device)
                 else:
-                    next_state = None
+                    next_state = [None]
 
                 self.memory_cache.push(state, action, [reward], next_state)
 
@@ -229,6 +235,7 @@ class Agent:
                 print("====================")
 
         avg_reward = self.logger.get_avg_reward()
+        self.logger.save_model(self.policy_net)
         return avg_reward
     
 
