@@ -3,6 +3,7 @@ import os
 import copy
 import collections
 import pickle
+import torch
 
 
 class Logger:
@@ -30,6 +31,9 @@ class Logger:
             data = json.load(json_file)
 
         return sum(data['reward'])/len(data['reward'])
+
+    def save_model(self, model):
+        torch.save(model, os.path.join(self.save_root, 'policy_final.pth'))
 
 
 class AverageMeter(object):
