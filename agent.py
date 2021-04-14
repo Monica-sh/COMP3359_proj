@@ -12,6 +12,8 @@ from memory import ReplayMemory
 from utils import AverageMeter
 import datetime
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 class Agent:
     def __init__(self,
@@ -48,8 +50,8 @@ class Agent:
         self.n_actions = n_actions
         self.print_interval = print_interval
 
-        self.policy_net = MLPPolicy(hidden_dim, n_actions, env.state_shape).to(self.device).float()
-        self.target_net = MLPPolicy(hidden_dim, n_actions, env.state_shape).to(self.device).float()
+        self.policy_net = MLPPolicy(hidden_dim, n_actions, env.state_shape).to(self.device).float().to(device)
+        self.target_net = MLPPolicy(hidden_dim, n_actions, env.state_shape).to(self.device).float().to(device)
         self.optimizer = torch.optim.Adam(self.policy_net.parameters(), lr=learning_rate)
         self.memory = ReplayMemory(memory_size, env.state_shape)
         self.logger = logger

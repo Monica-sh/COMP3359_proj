@@ -5,6 +5,8 @@ from sklearn.preprocessing import normalize
 import random
 import torch
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 class ReplayMemory(object):
     def __init__(self, capacity, state_dim):
@@ -55,10 +57,10 @@ class ReplayMemory(object):
             next_state_batch.append(self.next_state[idx])
 
         reward_batch = normalize(np.array(reward_batch).reshape(1, -1), norm='max')
-        return torch.FloatTensor(state_batch), \
-               torch.LongTensor(action_batch).unsqueeze(dim=1), \
-               torch.FloatTensor(reward_batch), \
-               torch.FloatTensor(next_state_batch)
+        return torch.FloatTensor(state_batch).to(device), \
+               torch.LongTensor(action_batch).unsqueeze(dim=1).to(device), \
+               torch.FloatTensor(reward_batch).to(device), \
+               torch.FloatTensor(next_state_batch).to(device)
 
     def __len__(self):
         return self.position if self.count < self.capacity else self.capacity
