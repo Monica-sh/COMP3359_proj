@@ -14,9 +14,10 @@ invest_ex = Experiment('invest')
 
 @invest_ex.config
 def base_config():
+    exp_ident = None
     gamma = 0.99
     start_learning = 10
-    memory_size = 10
+    memory_size = 100
     batch_size = 32
     target_update_step = 10
     policy_update_step = 3
@@ -30,6 +31,7 @@ def base_config():
 
     n_episodes = 1
     n_actions = 3
+    hidden_dim = 24
 
     norm_state = True
     print_interval = 1
@@ -40,12 +42,13 @@ def base_config():
 @invest_ex.main
 def run(gamma, start_learning, memory_size, batch_size, target_update_step, policy_update_step,
         max_episode_step, init_epsilon, epsilon_minimum, epsilon_decay_rate, epsilon_decay_step,
-        learning_rate, n_episodes, n_actions, norm_state, root_dir, print_interval):
+        learning_rate, n_episodes, n_actions, norm_state, root_dir, hidden_dim, print_interval):
+    
     env = load_env(root_dir, norm_state=norm_state)
     logger = Logger(invest_ex.observers[0].dir)
     agent = Agent(env, logger, gamma, start_learning, memory_size, batch_size, target_update_step,
                   policy_update_step, max_episode_step, init_epsilon, epsilon_minimum, epsilon_decay_rate,
-                  epsilon_decay_step, learning_rate, n_episodes, n_actions, print_interval)
+                  epsilon_decay_step, learning_rate, n_episodes, n_actions, hidden_dim, print_interval)
     avg_reward = agent.train()
     return {'avg_reward': avg_reward}
 

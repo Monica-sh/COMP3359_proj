@@ -31,6 +31,7 @@ class Agent:
                  learning_rate,
                  n_episodes,
                  n_actions,
+                 hidden_dim,
                  print_interval):
 
         self.env = env
@@ -47,8 +48,8 @@ class Agent:
         self.n_actions = n_actions
         self.print_interval = print_interval
 
-        self.policy_net = MLPPolicy(n_actions, env.state_shape).to(self.device).float()
-        self.target_net = MLPPolicy(n_actions, env.state_shape).to(self.device).float()
+        self.policy_net = MLPPolicy(hidden_dim, n_actions, env.state_shape).to(self.device).float()
+        self.target_net = MLPPolicy(hidden_dim, n_actions, env.state_shape).to(self.device).float()
         self.optimizer = torch.optim.Adam(self.policy_net.parameters(), lr=learning_rate)
         self.memory = ReplayMemory(memory_size, env.state_shape)
         self.logger = logger
