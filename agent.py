@@ -86,13 +86,10 @@ class Agent:
             print("type: ", state_action_values.type())  # torch.FloatTensor
 
         # RHS: r + gamma * max_a'( Q(s',a') )
-        next_state_values = []
-        for next_state in next_state_batch:
-            if np.isnan(next_state).any():
-                next_state_values.append(torch.FloatTensor([0, 0, 0]).to(device))
-            else:
-                next_state_values.append(self.target_net(torch.FloatTensor(next_state).to(device)))
-        next_state_values = torch.max(torch.stack(next_state_values), dim=1)
+        next_state_values = self.target_net(torch.FloatTensor(next_state_batch).to(device))
+        if True in torch.isnan(next_state_values):
+            next_state_values = torch.nan_to_num(next_state_values)
+        next_state_values = torch.max(next_state_values, dim=1)
         next_state_values = next_state_values.values.view([1, self.batch_size])
         # breakpoint()
 
