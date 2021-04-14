@@ -25,11 +25,12 @@ cwd = os.getcwd()
 
 @tune_ex.config
 def base_config():
-    exp_name = 'tune_search'
+    exp_name = 'exp'
+    exp_ident = None
     metric = 'avg_reward'
     tune_mode = 'max'
 
-    use_skopt = True
+    use_skopt = False
     skopt_search_mode = 'max'
     skopt_space = collections.OrderedDict([
         # Below are some examples of ways you can declare opt variables.
@@ -54,12 +55,11 @@ def base_config():
     skopt_ref_configs = []
 
     spec = dict(
-        norm_reward=tune.grid_search([True, False]),
-        norm_state=tune.grid_search([True, False])
+        hidden_dim=tune.grid_search([24, 100]),
     )
 
     tune_run_kwargs = dict(
-        num_samples=100,
+        num_samples=5,
         resources_per_trial=dict(
             cpu=1,
             gpu=0.02,
@@ -67,13 +67,15 @@ def base_config():
     )
 
 
-def run_exp(config, log_dir):
+def run_exp(config, log_dir, exp_ident):
     # copy config so that we don't mutate in-place
     config = copy.deepcopy(config)
     config['root_dir'] = cwd
+    config['exp_ident'] = exp_ident
     from main import invest_ex
 
-    observer = FileStorageObserver(osp.join(log_dir, 'tune'))
+    observer = FileStorageObserver(os.path.join(log_dir))
+    breakpoint()
     invest_ex.observers.append(observer)
     ret_val = invest_ex.run(config_updates=config)
     report_experiment_result(ret_val.result)
@@ -113,7 +115,7 @@ class CheckpointFIFOScheduler(FIFOScheduler):
 
 
 @tune_ex.main
-def run(exp_name, metric, tune_mode, spec, tune_run_kwargs, use_skopt, skopt_search_mode,
+def run(exp_ident, exp_name, metric, tune_mode, spec, tune_run_kwargs, use_skopt, skopt_search_mode,
         skopt_space, skopt_ref_configs):
     spec = sacred_copy(spec)
     log_dir = tune_ex.observers[0].dir
@@ -122,7 +124,7 @@ def run(exp_name, metric, tune_mode, spec, tune_run_kwargs, use_skopt, skopt_sea
 
     def trainable_function(config):
         # "config" is passed in by Ray Tune
-        run_exp(config, log_dir)
+        run_exp(config, log_dir, exp_ident)
 
     if use_skopt:
         assert skopt_search_mode in {'min', 'max'}, \
