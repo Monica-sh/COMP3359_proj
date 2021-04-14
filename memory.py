@@ -23,11 +23,8 @@ class ReplayMemory(object):
 
     def push(self, state, action, reward, next_state):
         """Saves a transition."""
-        if state.device.type == 'cuda':
-            state = state.cpu().numpy()
-            action = action.cpu().numpy()
-            reward = reward.cpu().numpy()
-            next_state = next_state.cpu().numpy()
+        state, action, reward, next_state = to_cpu_numpy(state), to_cpu_numpy(action), \
+                                            to_cpu_numpy(reward), to_cpu_numpy(next_state)
 
         remaining_length = len(state)
         while remaining_length > 0:
@@ -78,3 +75,10 @@ class ReplayMemory(object):
                     profit = self.reward[i]
                     self.reward[none_idx:i] = [profit / day_count for _ in range(none_idx, i)]
                     break
+
+
+def to_cpu_numpy(in_):
+    if isinstance(in_, torch.Tensor):
+        in_ = in_.cpu().numpy()
+
+    return in_
