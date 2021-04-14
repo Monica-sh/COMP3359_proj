@@ -32,12 +32,11 @@ class ReplayMemory(object):
             if not self.state[self.position:self.position + length].shape == state[:length].shape:
                 print(f"length {length}, remaining length {remaining_length}, "
                       f"self.position {self.position}, self.capacity {self.capacity}")
-                breakpoint()
 
-            self.state[self.position:self.position + length] = state[:length]
-            self.action[self.position:self.position + length] = action[:length]
-            self.reward[self.position:self.position + length] = reward[:length]
-            self.next_state[self.position:self.position + length] = next_state[:length]
+            self.state[self.position:self.position + length] = state[:length].cpu()
+            self.action[self.position:self.position + length] = action[:length].cpu()
+            self.reward[self.position:self.position + length] = reward[:length].cpu()
+            self.next_state[self.position:self.position + length] = next_state[:length].cpu()
             self.position = (self.position + length) % self.capacity
             self.count += length
 

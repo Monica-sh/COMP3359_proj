@@ -75,7 +75,6 @@ def run_exp(config, log_dir, exp_ident):
     from main import invest_ex
 
     observer = FileStorageObserver(os.path.join(log_dir))
-    breakpoint()
     invest_ex.observers.append(observer)
     ret_val = invest_ex.run(config_updates=config)
     report_experiment_result(ret_val.result)
