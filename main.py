@@ -17,19 +17,19 @@ def base_config():
     exp_ident = None
     gamma = 0.99
     start_learning = 10
-    memory_size = 100
+    memory_size = 1800
     batch_size = 32
-    target_update_step = 10
+    target_update_step = 20
     policy_update_step = 3
     max_episode_step = 365
 
     init_epsilon = 1
-    epsilon_minimum = 0.05
-    epsilon_decay_rate = 0.9999
+    epsilon_minimum = 0.077
+    epsilon_decay_rate = 0.9994
     epsilon_decay_step = 99999999999
-    learning_rate = 0.001
+    learning_rate = 0.0001
 
-    n_episodes = 1
+    n_episodes = 1000
     n_actions = 3
     hidden_dim = 24
 
@@ -43,7 +43,7 @@ def base_config():
 def run(gamma, start_learning, memory_size, batch_size, target_update_step, policy_update_step,
         max_episode_step, init_epsilon, epsilon_minimum, epsilon_decay_rate, epsilon_decay_step,
         learning_rate, n_episodes, n_actions, norm_state, root_dir, hidden_dim, print_interval):
-    
+
     env = load_env(root_dir, norm_state=norm_state)
     logger = Logger(invest_ex.observers[0].dir)
     agent = Agent(env, logger, gamma, start_learning, memory_size, batch_size, target_update_step,
