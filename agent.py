@@ -88,15 +88,17 @@ class Agent:
         # RHS: r + gamma * max_a'( Q(s',a') )
         next_state_values = []
         for next_state in next_state_batch:
-            if next_state is not None:
-                next_state_values.append(self.policy_net(next_state))
+            if np.isnan(next_state).any():
+                next_state_values.append(torch.FloatTensor([0, 0, 0]).to(device))
             else:
-                next_state_values.append(torch.FloatTensor([0]))
+                next_state_values.append(self.target_net(torch.FloatTensor(next_state).to(device)))
         next_state_values = torch.max(torch.stack(next_state_values), dim=1)
+        next_state_values = next_state_values.values.view([1, self.batch_size])
+        # breakpoint()
 
         # expected_state_action_values :
         #     target Q values = r + gamma * max_a'( Q(s',a') )
-        expected_state_action_values = (reward_batch + (self.gamma * next_state_values.values)).view(self.batch_size)
+        expected_state_action_values = (reward_batch + (self.gamma * next_state_values)).view(self.batch_size)
         if DEBUG:
             print("Target Q values (RHS) = r + gamma * max_a'( Q(s',a') )")
             print("= ", expected_state_action_values)
@@ -104,7 +106,8 @@ class Agent:
 
         # Update
         loss = F.mse_loss(state_action_values, expected_state_action_values)
-
+        if torch.isnan(loss):
+            breakpoint()
         # Update of DQN network weights
         self.optimizer.zero_grad()
         loss.backward()
@@ -202,12 +205,8 @@ class Agent:
                     self.memory_cache.reset()
 
                     loss = self.experience_replay(DEBUG=False)
+                    # breakpoint()
 
-                    # print(f"Episode [{episode}/{self.n_episodes}] "
-                    #       f"Global steps: {global_steps}, "
-                    #       f"Episode steps: {episode_step}, "
-                    #       f"loss: {loss}, "
-                    #       f"Time elapsed: {str(datetime.timedelta(seconds=time() - start_time))}")
                     loss_meter.update(loss.item())
 
                 if global_steps % self.target_update_step == 0:

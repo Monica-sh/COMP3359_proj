@@ -60,7 +60,7 @@ class ReplayMemory(object):
         return torch.FloatTensor(state_batch).to(device), \
                torch.LongTensor(action_batch).unsqueeze(dim=1).to(device), \
                torch.FloatTensor(reward_batch).to(device), \
-               torch.FloatTensor(next_state_batch).to(device)
+               next_state_batch
 
     def __len__(self):
         return self.position if self.count < self.capacity else self.capacity
