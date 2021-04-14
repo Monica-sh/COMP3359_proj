@@ -36,7 +36,6 @@ class ReplayMemory(object):
                 print(f"length {length}, remaining length {remaining_length}, "
                       f"self.position {self.position}, self.capacity {self.capacity}")
 
-            breakpoint()
             self.state[self.position:self.position + length] = state[:length]
             self.action[self.position:self.position + length] = action[:length]
             self.reward[self.position:self.position + length] = reward[:length]
