@@ -5,11 +5,15 @@ import pandas as pd
 from datetime import datetime, timedelta
 
 
-def load_env(root_dir, ticker='aapl', norm_state=True):
+def load_env(root_dir, ticker='aapl', norm_state=True, minimum_data=False):
     data_path = os.path.join(root_dir, "Dataset/Stocks/{}.us.txt".format(ticker))
     df = pd.read_csv(data_path)
     df.index = df["Date"]
     df = df.drop(['Date'], axis=1)
+    if minimum_data:
+        df = df.drop(['High'], axis=1)
+        df = df.drop(['Low'], axis=1)
+        df = df.drop(['OpenInt'], axis=1)
     return Environment(df, norm_state=norm_state)
 
 
@@ -26,7 +30,7 @@ class Environment:
         self.raw_df = raw_df
         self.start = raw_df.index[0]
         self.end = raw_df.index[-1]
-        self.state_shape = 6
+        self.state_shape = raw_df.shape[1]
         self.norm_state = norm_state
 
         # self.data_df = None

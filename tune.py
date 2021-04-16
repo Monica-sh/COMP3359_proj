@@ -26,7 +26,7 @@ cwd = os.getcwd()
 @tune_ex.config
 def base_config():
     exp_name = 'exp'
-    exp_ident = None
+    exp_ident = 'model-24v100'
     metric = 'avg_reward'
     tune_mode = 'max'
 

@@ -35,6 +35,7 @@ def base_config():
 
     norm_state = True
     print_interval = 1
+    minimum_data = False
 
     root_dir = os.getcwd()
 
@@ -42,9 +43,10 @@ def base_config():
 @invest_ex.main
 def run(gamma, start_learning, memory_size, batch_size, target_update_step, policy_update_step,
         max_episode_step, init_epsilon, epsilon_minimum, epsilon_decay_rate, epsilon_decay_step,
-        learning_rate, n_episodes, n_actions, norm_state, root_dir, hidden_dim, print_interval):
+        learning_rate, n_episodes, n_actions, norm_state, root_dir, hidden_dim, print_interval,
+        minimum_data):
 
-    env = load_env(root_dir, norm_state=norm_state)
+    env = load_env(root_dir, norm_state=norm_state, minimum_data=minimum_data)
     logger = Logger(invest_ex.observers[0].dir)
     agent = Agent(env, logger, gamma, start_learning, memory_size, batch_size, target_update_step,
                   policy_update_step, max_episode_step, init_epsilon, epsilon_minimum, epsilon_decay_rate,
