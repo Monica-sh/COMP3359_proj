@@ -31,7 +31,7 @@ def base_config():
 
     n_episodes = 1000
     n_actions = 3
-    hidden_dim = 24
+    hidden_dim = 100
 
     norm_state = True
     print_interval = 1
