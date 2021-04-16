@@ -34,7 +34,9 @@ class Agent:
                  n_episodes,
                  n_actions,
                  hidden_dim,
-                 print_interval):
+                 print_interval,
+                 policy_path,
+                 start_date):
 
         self.env = env
         self.gamma = gamma
@@ -49,8 +51,12 @@ class Agent:
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.n_actions = n_actions
         self.print_interval = print_interval
+        self.start_date = start_date
 
-        self.policy_net = MLPPolicy(hidden_dim, n_actions, env.state_shape).to(self.device).float().to(device)
+        if policy_path:
+            self.policy_net = torch.load(policy_path)
+        else:
+            self.policy_net = MLPPolicy(hidden_dim, n_actions, env.state_shape).to(self.device).float().to(device)
         self.target_net = MLPPolicy(hidden_dim, n_actions, env.state_shape).to(self.device).float().to(device)
         self.optimizer = torch.optim.Adam(self.policy_net.parameters(), lr=learning_rate)
         self.memory = ReplayMemory(memory_size, env.state_shape)
@@ -166,7 +172,7 @@ class Agent:
         for episode in range(self.n_episodes):
             # Initialize the environment, get initial state
             # you can change the beginning date here
-            state = self.env.reset(date="2016-11-10")
+            state = self.env.reset(date=self.start_date)
             # preprocess state
             state = preprocess_state(state, self.device)
 

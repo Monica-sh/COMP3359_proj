@@ -55,7 +55,9 @@ def base_config():
     skopt_ref_configs = []
 
     spec = dict(
-        hidden_dim=tune.grid_search([24, 100]),
+        policy_path=tune.grid_search(['/userhome/cs/cyn0531/COMP3359_proj/runs/tune_runs/'
+                                      'model-24v100/trained_apple_model_100.pth']),
+        ticker=tune.grid_search(['amzn', 'jpm'])
     )
 
     tune_run_kwargs = dict(
@@ -72,6 +74,9 @@ def run_exp(config, log_dir, exp_ident):
     config = copy.deepcopy(config)
     config['root_dir'] = cwd
     config['exp_ident'] = exp_ident
+    if config['ticker'] == 'jpm':
+        config['start_date'] = '1999-11-10'
+        print('Modified start_date as', config['start_date'])
     from main import invest_ex
 
     observer = FileStorageObserver(os.path.join(cwd, log_dir))

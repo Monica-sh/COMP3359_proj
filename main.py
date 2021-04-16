@@ -38,19 +38,25 @@ def base_config():
     minimum_data = False
 
     root_dir = os.getcwd()
+    policy_path = None
+
+    ticker = 'aapl'
+    start_date = "2016-11-10"
 
 
 @invest_ex.main
 def run(gamma, start_learning, memory_size, batch_size, target_update_step, policy_update_step,
         max_episode_step, init_epsilon, epsilon_minimum, epsilon_decay_rate, epsilon_decay_step,
         learning_rate, n_episodes, n_actions, norm_state, root_dir, hidden_dim, print_interval,
-        minimum_data):
+        minimum_data, ticker, policy_path, start_date):
 
-    env = load_env(root_dir, norm_state=norm_state, minimum_data=minimum_data)
+    env = load_env(root_dir, ticker=ticker, norm_state=norm_state, minimum_data=minimum_data)
+
     logger = Logger(invest_ex.observers[0].dir)
     agent = Agent(env, logger, gamma, start_learning, memory_size, batch_size, target_update_step,
                   policy_update_step, max_episode_step, init_epsilon, epsilon_minimum, epsilon_decay_rate,
-                  epsilon_decay_step, learning_rate, n_episodes, n_actions, hidden_dim, print_interval)
+                  epsilon_decay_step, learning_rate, n_episodes, n_actions, hidden_dim, print_interval,
+                  policy_path, start_date)
     avg_reward = agent.train()
     return {'avg_reward': avg_reward}
 
