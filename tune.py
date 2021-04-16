@@ -56,7 +56,7 @@ def base_config():
 
     spec = dict(
         policy_path=tune.grid_search(['/userhome/cs/cyn0531/COMP3359_proj/runs/tune_runs/'
-                                      'model-24v100/trained_apple_model_100.pth']),
+                                      'model-24v100/trained_apple_model_100.pth', None]),
         ticker=tune.grid_search(['amzn', 'jpm'])
     )
 
