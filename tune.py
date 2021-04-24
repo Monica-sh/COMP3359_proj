@@ -55,8 +55,7 @@ def base_config():
     skopt_ref_configs = []
 
     spec = dict(
-        policy_path=tune.grid_search(['/userhome/cs/cyn0531/COMP3359_proj/runs/tune_runs/'
-                                      'model-24v100/trained_apple_model_100.pth', None]),
+        policy_path=tune.grid_search(['/userhome/cs/cyn0531/COMP3359_proj/runs/invest_runs/1/policy_final.pth', None]),
         start_date=tune.grid_search(["2015-11-10"])
     )
 
