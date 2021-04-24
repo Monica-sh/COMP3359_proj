@@ -74,9 +74,9 @@ def run_exp(config, log_dir, exp_ident):
     config = copy.deepcopy(config)
     config['root_dir'] = cwd
     config['exp_ident'] = exp_ident
-    if config['ticker'] == 'jpm':
-        config['start_date'] = '1999-11-10'
-        print('Modified start_date as', config['start_date'])
+    # if config['ticker'] == 'jpm':
+    #     config['start_date'] = '1999-11-10'
+    #     print('Modified start_date as', config['start_date'])
     from main import invest_ex
 
     observer = FileStorageObserver(os.path.join(cwd, log_dir))
