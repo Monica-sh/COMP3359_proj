@@ -60,7 +60,7 @@ class Environment:
     
     # construct data set after defining self.date
     def process_data(self):
-        #normalise data
+        # normalise data
         data_df = self.raw_df[self.date:]
         if self.norm_state:
             df_max = np.max(data_df, axis=0)

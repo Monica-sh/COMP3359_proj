@@ -13,7 +13,6 @@ import ray
 from ray import tune
 from ray.tune.schedulers import FIFOScheduler
 from ray.tune.suggest.skopt import SkOptSearch
-
 from main import invest_ex
 from utils import sacred_copy, update
 
@@ -26,7 +25,7 @@ cwd = os.getcwd()
 @tune_ex.config
 def base_config():
     exp_name = 'exp'
-    exp_ident = 'transfer-amazn-v-jpm'
+    exp_ident = 'hyperparam_tune'
     metric = 'avg_reward'
     tune_mode = 'max'
 
@@ -55,12 +54,12 @@ def base_config():
     skopt_ref_configs = []
 
     spec = dict(
-        policy_path=tune.grid_search(['/userhome/cs/cyn0531/COMP3359_proj/runs/invest_runs/1/policy_final.pth', None]),
+        policy_path=tune.grid_search(['/userhome/cs/cyn0531/COMP3359_proj/runs/invest_runs/1/', None]),
         start_date=tune.grid_search(["2015-11-10"])
     )
 
     tune_run_kwargs = dict(
-        num_samples=3,
+        num_samples=100,
         resources_per_trial=dict(
             cpu=1,
             gpu=0.02,
@@ -73,9 +72,6 @@ def run_exp(config, log_dir, exp_ident):
     config = copy.deepcopy(config)
     config['root_dir'] = cwd
     config['exp_ident'] = exp_ident
-    # if config['ticker'] == 'jpm':
-    #     config['start_date'] = '1999-11-10'
-    #     print('Modified start_date as', config['start_date'])
     from main import invest_ex
 
     observer = FileStorageObserver(os.path.join(cwd, log_dir))
@@ -141,13 +137,6 @@ def run(exp_ident, exp_name, metric, tune_mode, spec, tune_run_kwargs, use_skopt
         skopt_search_mode = sacred_copy(skopt_search_mode)
         skopt_ref_configs = sacred_copy(skopt_ref_configs)
         metric = sacred_copy(metric)
-
-        # In addition to the actual spaces we're searching over, we also need
-        # to store the baseline config values in Ray to avoid Ray issue #12048.
-        # base_space = skopt.space.Categorical([base_config])
-        # skopt_space['base_config'] = base_space
-        # for ref_config in skopt_ref_configs:
-        #     ref_config['+base_config'] = base_config
 
         sorted_space = collections.OrderedDict([
             (key, value) for key, value in sorted(skopt_space.items())
