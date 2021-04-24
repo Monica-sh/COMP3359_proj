@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from torchsummary import summary
 
 
 class MLPPolicy(nn.Module):
@@ -21,3 +22,12 @@ class MLPPolicy(nn.Module):
         x = self.relu3(self.fc3(x))
         x = self.fc4(x)
         return x
+
+
+if __name__ == '__main__':
+    import os
+
+    os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+
+    model = MLPPolicy(100, 3, 6)
+    summary(model, (1, 6))
