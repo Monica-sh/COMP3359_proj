@@ -54,12 +54,12 @@ def base_config():
     skopt_ref_configs = []
 
     spec = dict(
-        policy_path=tune.grid_search(['/userhome/cs/cyn0531/COMP3359_proj/runs/invest_runs/1/', None]),
+        policy_path=tune.grid_search(['path/to/model', None]),
         start_date=tune.grid_search(["2015-11-10"])
     )
 
     tune_run_kwargs = dict(
-        num_samples=100,
+        num_samples=10,
         resources_per_trial=dict(
             cpu=1,
             gpu=0.02,

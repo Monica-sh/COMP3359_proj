@@ -10,3 +10,4 @@ scikit-optimize~=0.8.1
 captum==0.3.1
 cloudpickle
 jupyter
+torchsummary
