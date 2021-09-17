@@ -1,4 +1,4 @@
-# Stock investment with Deep Q Learning
+# Stock trading with Deep Q Learning
 
 This is an implementation to perform stock investment with a deep reinforcement learning algorithm, Deep Q Learning. 
 
